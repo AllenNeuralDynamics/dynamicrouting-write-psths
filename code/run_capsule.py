@@ -223,6 +223,10 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                     .select('session_id', 'unit_id', 'psth', 'predict_proba')
                     .with_columns(
                         pl.lit(None).cast(pl.Int32).alias('null_iteration'),
+                        pl.lit(None).cast(pl.Utf8).alias('null_pair_id'),
+                        pl.lit(None).cast(pl.Utf8).alias('null_condition'),
+                        pl.lit(None).cast(pl.Utf8).alias('null_condition_1_filter'),
+                        pl.lit(None).cast(pl.Utf8).alias('null_condition_2_filter'),
                     )
                 )
                 psth_dfs.append(unit_psths)
@@ -265,12 +269,12 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                             .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'condition', 'unit_id', 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size)
                             
                             # .drop('bin_centers', strict=False)
-                            .select('session_id', 'unit_id', 'condition', 'psth', 'predict_proba')
+                            .select('session_id', 'unit_id', 'psth', 'predict_proba', pl.col('condition').alias('null_condition'))
                             .with_columns(
                                 pl.lit(i).alias('null_iteration'),
                                 pl.lit(null_condition_pair_index).alias('null_pair_id'),
-                                pl.lit(null_condition_pair[0].meta.root_names()).alias('condition_1'),
-                                pl.lit(null_condition_pair[1].meta.root_names()).alias('condition_2'),
+                                pl.lit(null_condition_pair[0].meta.root_names()).alias('null_condition_1_filter'),
+                                pl.lit(null_condition_pair[1].meta.root_names()).alias('null_condition_2_filter'),
                                 # pl.when(pl.col('condition') == 1).then(pl.lit(null_condition_pair[0].meta.root_names())).otherwise(null_condition_pair[1].meta.root_names()).alias('condition')
                             )
                         )
