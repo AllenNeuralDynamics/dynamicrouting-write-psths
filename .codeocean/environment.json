@@ -1,11 +1,9 @@
 {
 	"version": 1,
 	"base_image": "codeocean/mambaforge3:23.1.0-4-python3.10.12-ubuntu22.04",
-	"post_install": true,
 	"options": {
 		"registry_host_arg": true,
-		"git_ask_pass": true,
-		"mount_secrets": true
+		"git_ask_pass": true
 	},
 	"installers": {
 		"apt": {
@@ -20,28 +18,69 @@
 		"pip3": {
 			"packages": [
 				{
-					"name": "cloudpickle",
-					"version": "3.1.2"
+					"name": "code-ocean-aux-tools",
+					"version": "1.1.3"
 				},
 				{
-					"name": "lazynwb",
-					"version": "0.2.76"
+					"name": "hdmf",
+					"version": "3.14.6"
 				},
 				{
 					"name": "numba",
 					"version": "0.60.0"
 				},
 				{
-					"name": "polars-ds",
-					"version": "0.10.3"
+					"name": "pandas[all]",
+					"version": "2.2.3"
 				},
 				{
-					"name": "pydantic-settings",
-					"version": "2.10.1"
+					"name": "polars[plot]",
+					"version": "1.21.0"
+				},
+				{
+					"name": "pynwb",
+					"version": "2.8.2"
+				},
+				{
+					"name": "s3fs",
+					"version": "2024.10.0"
+				},
+				{
+					"name": "scikit-learn",
+					"version": "1.5.2"
+				},
+				{
+					"name": "universal-pathlib",
+					"version": "0.1.4"
+				},
+				{
+					"name": "zarr",
+					"version": "2.17.2"
 				}
 			],
 			"options": {},
 			"pre_install_options": {}
+		},
+		"vscode": {
+			"packages": [
+				{
+					"name": "ms-python.python",
+					"version": "2025.14.0"
+				},
+				{
+					"name": "ms-toolsai.jupyter",
+					"version": "2025.4.1"
+				},
+				{
+					"name": "reditorsupport.r",
+					"version": "2.8.6"
+				},
+				{
+					"name": "saoudrizwan.claude-dev",
+					"version": "3.35.1"
+				}
+			],
+			"version": "4.100.3"
 		}
 	}
 }
