@@ -231,7 +231,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
             if params.n_null_iterations:
                 for null_condition_pair_index, null_condition_pair in enumerate(null_condition_pairs):
                     
-                    for i in tqdm.tqdm(range(params.n_null_iterations), total=params.n_null_iterations, unit='iterations', desc=f'Computing null PSTHs for {area}'):
+                    for i in params.n_null_iterations:
 
                         null_unit_psths = (
                             area_spike_times
