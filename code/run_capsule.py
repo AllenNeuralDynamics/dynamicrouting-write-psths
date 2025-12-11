@@ -41,9 +41,9 @@ class Params(pydantic_settings.BaseSettings):
     bin_size: float = 0.001
     pre: float = 0.5
     post: float = 0.5
-    include_only_good_blocks: bool = False
+    include_only_good_blocks: bool = True
     good_block_dprime_threshold: float = 1.0
-    include_good_blocks_in_bad_sessions: bool = True
+    include_good_blocks_in_bad_sessions: bool = False
     min_units_across_sessions: int = pydantic.Field(500, exclude=True)
     max_workers: int | None = pydantic.Field(None, exclude=True)
     n_null_iterations: int = 100
