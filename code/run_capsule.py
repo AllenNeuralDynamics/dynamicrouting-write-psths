@@ -221,7 +221,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                     .with_columns(
                         pl.lit(1).alias('duration'), # needed for psth
                     )
-                    .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size,)
+                    .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols, 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size,)
                     .select('session_id', 'unit_id', *condition_cols, 'psth', 'predict_proba')
                 )
                 psth_dfs.append(unit_psths)
