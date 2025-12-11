@@ -47,6 +47,7 @@ class Params(pydantic_settings.BaseSettings):
     min_units_across_sessions: int = pydantic.Field(500, exclude=True)
     max_workers: int | None = pydantic.Field(None, exclude=True)
     n_null_iterations: int = 100
+    skip_existing: bool = pydantic.Field(False, exclude=True)
 
     # --------------------------------
     @property
