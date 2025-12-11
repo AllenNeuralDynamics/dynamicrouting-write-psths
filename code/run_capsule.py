@@ -376,7 +376,6 @@ if __name__ == "__main__":
         futures = []
         for (area,), df in tqdm.tqdm(well_sampled_good_units.group_by('structure', maintain_order=True), desc='Submitting processing jobs', unit='areas'):
             futures.append(executor.submit(write_psths_for_area, unit_ids=df['unit_id'], trials=trials, area=area, params=params))
-            break
         for future in tqdm.tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc='Processing PSTHS', unit='areas'):
             _ = future.result() # raise any errors encountered
     print(f"All finished")
