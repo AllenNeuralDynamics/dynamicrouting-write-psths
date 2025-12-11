@@ -226,9 +226,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                 )
                 psth_dfs.append(unit_psths)
 
-
-
-            extra_dfs = []
+            null_dfs = []
             if params.n_null_iterations:
                 for null_condition_pair in itertools.combinations(conditions, 2):
                     
@@ -256,15 +254,10 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                                 pl.col('null_condition').list.sample(fraction=1, shuffle=True, with_replacement=False, seed=i),
                             )
                             .explode(pl.all().exclude('session_id', 'unit_id', *condition_cols))
-                            # .select(
-                            #     'n_spikes', 'duration', 'session_id', 'unit_id', 'null_condition',
-                            # )
                             
                             #make psths
-                            .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'null_condition', 'unit_id', 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size)
-                            
-                            # .drop('bin_centers', strict=False)
-                            .select('session_id', 'unit_id', *condition_cols, 'psth', 'predict_proba', pl.col('null_condition'))
+                            .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols, 'null_condition', 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size)
+                                                        .select('session_id', 'unit_id', *condition_cols, 'predict_proba', 'psth', 'null_condition')
                             .with_columns(
                                 pl.lit(i).alias('null_iteration'),
                                 pl.lit(null_condition_pair_index).alias('null_pair_id'),
@@ -272,12 +265,9 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                                 pl.lit(null_condition_pair[1].meta.root_names()).alias('null_condition_2_filter'),
                             )
                         )
-                        extra_dfs.append(null_unit_psths)
-                        null_condition_pair_index += 1
-
-                if extra_dfs:
-                    unit_psths = pl.concat(psth_dfs + extra_dfs, how="diagonal_relaxed")
-
+                        null_dfs.append(null_unit_psths)
+                    null_condition_pair_index += 1
+    unit_psths = pl.concat(psth_dfs + null_dfs, how="diagonal_relaxed")
     unit_psths.write_parquet(parquet_path.as_posix())
     print(f"Wrote {parquet_path.as_posix()}")
 
@@ -386,6 +376,7 @@ if __name__ == "__main__":
         futures = []
         for (area,), df in tqdm.tqdm(well_sampled_good_units.group_by('structure', maintain_order=True), desc='Submitting processing jobs', unit='areas'):
             futures.append(executor.submit(write_psths_for_area, unit_ids=df['unit_id'], trials=trials, area=area, params=params))
+            break
         for future in tqdm.tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc='Processing PSTHS', unit='areas'):
             _ = future.result() # raise any errors encountered
     print(f"All finished")
