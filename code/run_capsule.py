@@ -161,9 +161,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
             unit_ids=unit_ids,
             trials_frame=(
                 trials
-                .filter(
-                    ~pl.col('is_instruction'),
-                )
+                .filter(~pl.col('is_instruction'))
                 .with_columns(session_id=pl.col('_nwb_path').str.split('/').list.get(-1).str.strip_suffix('.nwb'))
             ),
             as_counts=False,
@@ -207,8 +205,11 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
 
     condition_cols = 'is_aud_target', 'is_vis_target', 'is_aud_nontarget', 'is_vis_nontarget', 'is_aud_rewarded', 'is_vis_rewarded', 'is_response', 'is_hit', 'is_miss', 'is_correct_reject', 'is_false_alarm'
 
+    null_condition_pairs = []
+    for condition_group in all_conditions:
+        null_condition_pairs.extend(itertools.combinations(condition_group, 2))
+    
     psth_dfs = []
-    null_condition_pair_index = 0
     for predict_proba in area_spike_times['predict_proba'].unique().to_list() + [None]:
         for conditions in all_conditions:
             for condition in conditions:
@@ -228,7 +229,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
 
             null_dfs = []
             if params.n_null_iterations:
-                for null_condition_pair in itertools.combinations(conditions, 2):
+                for null_condition_pair_index, null_condition_pair in enumerate(null_condition_pairs):
                     
                     for i in tqdm.tqdm(range(params.n_null_iterations), total=params.n_null_iterations, unit='iterations', desc=f'Computing null PSTHs for {area}'):
 
@@ -266,7 +267,6 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                             )
                         )
                         null_dfs.append(null_unit_psths)
-                    null_condition_pair_index += 1
     unit_psths = pl.concat(psth_dfs + null_dfs, how="diagonal_relaxed")
     unit_psths.write_parquet(parquet_path.as_posix())
     print(f"Wrote {parquet_path.as_posix()}")
