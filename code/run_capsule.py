@@ -1,4 +1,5 @@
 
+import itertools
 import os
 os.environ['POLARS_MAX_THREADS'] = '1'
 os.environ['TOKIO_WORKER_THREADS'] = '1' 
@@ -29,12 +30,14 @@ import upath
 import utils
 
 ROOT_DIR = upath.UPath('s3://aind-scratch-data/dynamic-routing/psths')
+decoding_parquet_path = '/root/capsule/data/all_trials_with_predict_proba.parquet'
 
 class Params(pydantic_settings.BaseSettings):
     override_date: str | None = pydantic.Field(None, exclude=True)
     conv_kernel_s: float = 0.01
-    correct_trials_only: bool = True
     align_to: str = 'stim_start_time'
+    bin_by_decoder_confidence: bool = True
+    decoder_areas_to_average: list[str] = pydantic.Field(default_factory=lambda: sorted(['MRN', 'SCm', 'MOs', 'FRP' , 'CP', 'SSp']))
     bin_size: float = 0.001
     pre: float = 0.5
     post: float = 0.5
@@ -150,94 +153,132 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
         print(f'Skipping {area}: parquet already on S3')
         return None
     
-    area_spike_times = utils.get_per_trial_spike_times(
-        starts=pl.col(params.align_to) - params.pre,
-        ends=pl.col(params.align_to) + params.post,
-        unit_ids=unit_ids,
-        trials_frame=(
-            trials
-            .filter(
-                pl.col('is_correct') if params.correct_trials_only else pl.lit(True),
-                ~pl.col('is_instruction'),
-                pl.col('is_aud_target') | pl.col('is_vis_target'),
-            )
-            .with_columns(session_id=pl.col('_nwb_path').str.split('/').list.get(-1).str.strip_suffix('.nwb'))
-        ),
-        as_counts=False,
-        as_binarized_array=False,
-        binarized_trial_length=1.0,
-        keep_only_necessary_cols=False
-    ).sort('unit_id', 'trial_index')
-
-    contexts = (
-            pl.col('is_aud_target') & pl.col('is_aud_rewarded'),
-            pl.col('is_aud_target') & ~pl.col('is_aud_rewarded'),
-            pl.col('is_vis_target') & pl.col('is_vis_rewarded'),
-            pl.col('is_vis_target') & ~pl.col('is_vis_rewarded')
-        )
-
-    sessions_with_all_contexts = functools.reduce(np.intersect1d, [area_spike_times.filter(context)['session_id'].unique() for context in contexts])
-
-    context_state_to_context_string = {
-        4: 'AA', #auditory target, auditory context
-        3: 'AV', #auditory target, visual context
-        2: 'VA', #visual target, auditory context
-        1: 'VV'  #visual target, visual context
-    }
-
     area_spike_times = (
-        area_spike_times
-        .filter( 
-            pl.col('session_id').is_in(sessions_with_all_contexts)
-        )
-        .with_columns(
-            (pl.col('is_aud_target').cast(pl.Int8) * 2 + pl.col('is_aud_rewarded').cast(pl.Int8) + 1).cast(pl.Utf8).replace(context_state_to_context_string).alias('context_state'),
+        utils.get_per_trial_spike_times(
+            starts=pl.col(params.align_to) - params.pre,
+            ends=pl.col(params.align_to) + params.post,
+            unit_ids=unit_ids,
+            trials_frame=(
+                trials
+                .filter(
+                    ~pl.col('is_instruction'),
+                )
+                .with_columns(session_id=pl.col('_nwb_path').str.split('/').list.get(-1).str.strip_suffix('.nwb'))
+            ),
+            as_counts=False,
+            as_binarized_array=False,
+            binarized_trial_length=1.0,
+            keep_only_necessary_cols=False
         )
         .drop('bin_centers', strict=False)
+        .sort('unit_id', 'trial_index')
     )
 
-    unit_psths = (
-        area_spike_times
-        .with_columns(
-            pl.lit(1).alias('duration'), # needed for psth
+    all_conditions = (
+        # each group below has the same stim
+        # multiple nulls are created for each group based on pairs of expressions within the group
+            (
+                pl.col('is_aud_target') & pl.col('is_aud_rewarded') & pl.col('is_hit'), # hit aud
+                pl.col('is_aud_target') & pl.col('is_aud_rewarded') & pl.col('is_miss'), # miss aud
+                pl.col('is_aud_target') & pl.col('is_vis_rewarded') & pl.col('is_false_alarm'), # FA aud
+                pl.col('is_aud_target') & pl.col('is_vis_rewarded') & pl.col('is_correct_reject'), # CR aud
+            ),
+            (
+                pl.col('is_vis_target') & pl.col('is_vis_rewarded') & pl.col('is_hit'), # hit vis
+                pl.col('is_vis_target') & pl.col('is_vis_rewarded') & pl.col('is_miss'), # miss vis
+                pl.col('is_vis_target') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm'), # FA vis
+                pl.col('is_vis_target') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject'), # CR vis
+            ),
+            (
+                pl.col('is_aud_nontarget') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm'), # FA aud nontarget aud context
+                pl.col('is_aud_nontarget') & pl.col('is_vis_rewarded') & pl.col('is_false_alarm'), # FA aud nontarget vis context
+                pl.col('is_aud_nontarget') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject'), # CR aud nontarget aud context
+                pl.col('is_aud_nontarget') & pl.col('is_vis_rewarded') & pl.col('is_correct_reject'), # CR aud nontarget vis context
+            ),
+            (
+                pl.col('is_vis_nontarget') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm'), # FA vis nontarget aud context
+                pl.col('is_vis_nontarget') & pl.col('is_vis_rewarded') & pl.col('is_false_alarm'), # FA vis nontarget vis context
+                pl.col('is_vis_nontarget') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject'), # CR vis nontarget aud context
+                pl.col('is_vis_nontarget') & pl.col('is_vis_rewarded') & pl.col('is_correct_reject'), # CR vis nontarget vis context
+            ),
         )
-        .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'context_state', 'unit_id'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size,)
-        .select('session_id', 'unit_id', 'context_state', 'psth')
-        .with_columns(
-            pl.lit(None).cast(pl.Int32).alias('null_iteration'),
-        )
-    )
-    extra_dfs = []
-    if params.n_null_iterations:
-        for i in tqdm.tqdm(range(params.n_null_iterations), total=params.n_null_iterations, unit='iterations', desc=f'Computing null PSTHs for {area}'):
+    
 
-            null_unit_psths = (
-                area_spike_times
-                .with_columns(
-                    pl.lit(1).alias('duration'),
-                )
-                #shuffle context labels within session groups
-                .group_by('session_id', 'unit_id', pl.col('context_state').str.head(1).alias('stim')).agg(
-                    pl.all())
-                .with_columns(
-                    pl.col('context_state').list.sample(n=pl.col('context_state').list.len(), shuffle=True, with_replacement=False, seed=i),)
-                .explode(pl.all().exclude('session_id', 'unit_id', 'stim'))
-                .select(
-                    'n_spikes', 'duration', 'session_id', 'unit_id', 'context_state',
-                )
-                
-                #make psths
-                .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'context_state', 'unit_id'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size)
-                
-                .select('session_id', 'unit_id', 'context_state', 'psth')
-                .with_columns(
-                    pl.lit(i).alias('null_iteration'),
-                )
-            )
-            extra_dfs.append(null_unit_psths)
 
-    if extra_dfs:
-        unit_psths = pl.concat([unit_psths] + extra_dfs)
+    psth_dfs = []
+    null_condition_pair_index = 0
+    for predict_proba in area_spike_times['predict_proba'].unique().to_list() + [None]:
+        for conditions in all_conditions:
+            for condition in conditions:
+                unit_psths = (
+                    area_spike_times
+                    .filter(
+                        condition, 
+                        pl.col('predict_proba').eq(predict_proba) if predict_proba else pl.lit(True),
+                    )
+                    .with_columns(
+                        pl.lit(1).alias('duration'), # needed for psth
+                    )
+                    .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size,)
+                    .select('session_id', 'unit_id', 'psth', 'predict_proba')
+                    .with_columns(
+                        pl.lit(None).cast(pl.Int32).alias('null_iteration'),
+                    )
+                )
+                psth_dfs.append(unit_psths)
+
+
+
+            extra_dfs = []
+            if params.n_null_iterations:
+                for null_condition_pair in itertools.combinations(conditions, 2):
+                    
+                    for i in tqdm.tqdm(range(params.n_null_iterations), total=params.n_null_iterations, unit='iterations', desc=f'Computing null PSTHs for {area}'):
+
+                        null_unit_psths = (
+                            area_spike_times
+                            .with_columns(
+                                pl.lit(1).alias('duration'),
+                            )
+                            .filter(
+                                null_condition_pair[0] | null_condition_pair[1],
+                                pl.col('predict_proba').eq(predict_proba) if predict_proba else pl.lit(True),
+                            )
+                            .with_columns(
+                                pl.when(null_condition_pair[0]).then(pl.lit(1)).otherwise(pl.lit(2)).alias('condition')
+                            )
+                            .filter(
+                                pl.col('condition').n_unique().eq(2).over('session_id')
+                            )
+                            #shuffle context labels within session groups
+                            .group_by('session_id', 'unit_id')
+                            .agg(pl.all())
+                            .with_columns(
+                                pl.col('condition').list.sample(fraction=1, shuffle=True, with_replacement=False, seed=i),
+                            )
+                            .explode(pl.all().exclude('session_id', 'unit_id'))
+                            # .select(
+                            #     'n_spikes', 'duration', 'session_id', 'unit_id', 'condition',
+                            # )
+                            
+                            #make psths
+                            .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'condition', 'unit_id', 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size)
+                            
+                            # .drop('bin_centers', strict=False)
+                            .select('session_id', 'unit_id', 'condition', 'psth', 'predict_proba')
+                            .with_columns(
+                                pl.lit(i).alias('null_iteration'),
+                                pl.lit(null_condition_pair_index).alias('null_pair_id'),
+                                pl.lit(null_condition_pair[0].meta.root_names()).alias('condition_1'),
+                                pl.lit(null_condition_pair[1].meta.root_names()).alias('condition_2'),
+                                # pl.when(pl.col('condition') == 1).then(pl.lit(null_condition_pair[0].meta.root_names())).otherwise(null_condition_pair[1].meta.root_names()).alias('condition')
+                            )
+                        )
+                        extra_dfs.append(null_unit_psths)
+                        null_condition_pair_index += 1
+
+                if extra_dfs:
+                    unit_psths = pl.concat(psth_dfs + extra_dfs)
 
     unit_psths.write_parquet(parquet_path.as_posix())
     print(f"Wrote {parquet_path.as_posix()}")
@@ -278,6 +319,7 @@ if __name__ == "__main__":
     )
     trials = (
         lazynwb.scan_nwb(sessions_to_analyze['_nwb_path'], 'trials').collect()
+        .with_columns(pl.col('_nwb_path').str.split('/').list.get(-1).str.strip_suffix('.nwb').alias('session_id'))
     )
     if params.include_only_good_blocks:
         trials = (
@@ -291,6 +333,21 @@ if __name__ == "__main__":
                 how='semi',
             )
         )
+
+    if params.bin_by_decoder_confidence:
+        cols = [f"{a}_predict_proba" for a in params.decoder_areas_to_average]
+
+        decoding_df = (
+            pl.read_parquet(decoding_parquet_path)
+            .with_columns(pl.mean_horizontal(cols).alias('mean'))
+            .with_columns(
+                predict_proba=pl.col('mean').cut([0.2, 0.4, 0.6, 0.8], include_breaks=False)
+            )
+            .select('session_id', 'trial_index', 'predict_proba')
+        )
+        trials = trials.join(decoding_df, on=['trial_index', 'session_id'], how='inner')
+    else:
+        trials = trials.with_columns(predict_proba=pl.lit(None))
 
     units = lazynwb.scan_nwb(nwb_files, 'units', infer_schema_length=1)
 
