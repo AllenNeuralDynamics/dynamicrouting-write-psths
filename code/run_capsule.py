@@ -147,10 +147,10 @@ def psth(
     return updated_df
 
 
-def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: str, params: Params, skip_existing: bool = True) -> None:
+def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: str, params: Params) -> None:
 
     parquet_path = params.dir_path / f'{area}.parquet'
-    if skip_existing and parquet_path.exists():
+    if params.skip_existing and parquet_path.exists():
         print(f'Skipping {area}: parquet already on S3')
         return None
     
