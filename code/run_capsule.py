@@ -335,11 +335,11 @@ if __name__ == "__main__":
 
         decoding_df = (
             pl.read_parquet(decoding_parquet_path)
-            .with_columns(pl.mean_horizontal(cols).alias('mean'))
+            .with_columns(pl.mean_horizontal(cols).alias('predict_proba'))
             .with_columns(
-                predict_proba=pl.col('mean').cut([0.2, 0.4, 0.6, 0.8], include_breaks=False)
+                predict_proba_quintile=pl.col('predict_proba').cut([0.2, 0.4, 0.6, 0.8], include_breaks=False)
             )
-            .select('session_id', 'trial_index', 'predict_proba')
+            .select('session_id', 'trial_index', 'predict_proba', 'predict_proba_quintile')
         )
         trials = trials.join(decoding_df, on=['trial_index', 'session_id'], how='inner')
     else:
