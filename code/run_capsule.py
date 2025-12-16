@@ -212,63 +212,61 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
         null_condition_pairs.extend(itertools.combinations(condition_group, 2))
     
     psth_dfs = []
-    for predict_proba in area_spike_times['predict_proba'].unique().to_list() + [None]:
-        for conditions in all_conditions:
-            for condition in conditions:
-                unit_psths = (
-                    area_spike_times
-                    .filter(
-                        condition, 
-                        pl.col('predict_proba').eq(predict_proba) if predict_proba else pl.lit(True),
-                    )
-                    .with_columns(
-                        pl.lit(1).alias('duration'), # needed for psth
-                    )
-                    .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols, 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size,)
-                    .select('session_id', 'unit_id', *condition_cols, 'psth', 'predict_proba')
+    for conditions in all_conditions:
+        for condition in conditions:
+            unit_psths = (
+                area_spike_times
+                .filter(
+                    condition, 
                 )
-                psth_dfs.append(unit_psths)
+                .with_columns(
+                    pl.lit(1).alias('duration'), # needed for psth
+                )
+                .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols, 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size,)
+                .select('session_id', 'unit_id', *condition_cols, 'psth', 'predict_proba')
+            )
+            psth_dfs.append(unit_psths)
 
-            null_dfs = []
-            if params.n_null_iterations:
-                for null_condition_pair_index, null_condition_pair in enumerate(null_condition_pairs):
-                    
-                    for i in range(params.n_null_iterations):
+        null_dfs = []
+        if params.n_null_iterations:
+            for null_condition_pair_index, null_condition_pair in enumerate(null_condition_pairs):
+                
+                for i in range(params.n_null_iterations):
 
-                        null_unit_psths = (
-                            area_spike_times
-                            .with_columns(
-                                pl.lit(1).alias('duration'),
-                            )
-                            .filter(
-                                null_condition_pair[0] | null_condition_pair[1],
-                                pl.col('predict_proba').eq(predict_proba) if predict_proba else pl.lit(True),
-                            )
-                            .with_columns(
-                                pl.when(null_condition_pair[0]).then(pl.lit(1)).otherwise(pl.lit(2)).alias('null_condition')
-                            )
-                            .filter(
-                                pl.col('null_condition').n_unique().eq(2).over('session_id')
-                            )
-                            #shuffle context labels within session groups
-                            .group_by('session_id', 'unit_id', *condition_cols)
-                            .agg(pl.all())
-                            .with_columns(
-                                pl.col('null_condition').list.sample(fraction=1, shuffle=True, with_replacement=False, seed=i),
-                            )
-                            .explode(pl.all().exclude('session_id', 'unit_id', *condition_cols))
-                            
-                            #make psths
-                            .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols, 'null_condition', 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size)
-                                                        .select('session_id', 'unit_id', *condition_cols, 'predict_proba', 'psth', 'null_condition')
-                            .with_columns(
-                                pl.lit(i).alias('null_iteration'),
-                                pl.lit(null_condition_pair_index).alias('null_pair_id'),
-                                pl.lit(null_condition_pair[0].meta.root_names()).alias('null_condition_1_filter'),
-                                pl.lit(null_condition_pair[1].meta.root_names()).alias('null_condition_2_filter'),
-                            )
+                    null_unit_psths = (
+                        area_spike_times
+                        .with_columns(
+                            pl.lit(1).alias('duration'),
                         )
-                        null_dfs.append(null_unit_psths)
+                        .filter(
+                            null_condition_pair[0] | null_condition_pair[1],
+                            pl.col('predict_proba').eq(predict_proba) if predict_proba else pl.lit(True),
+                        )
+                        .with_columns(
+                            pl.when(null_condition_pair[0]).then(pl.lit(1)).otherwise(pl.lit(2)).alias('null_condition')
+                        )
+                        .filter(
+                            pl.col('null_condition').n_unique().eq(2).over('session_id')
+                        )
+                        #shuffle context labels within session groups
+                        .group_by('session_id', 'unit_id', *condition_cols)
+                        .agg(pl.all())
+                        .with_columns(
+                            pl.col('null_condition').list.sample(fraction=1, shuffle=True, with_replacement=False, seed=i),
+                        )
+                        .explode(pl.all().exclude('session_id', 'unit_id', *condition_cols))
+                        
+                        #make psths
+                        .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols, 'null_condition', 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size)
+                                                    .select('session_id', 'unit_id', *condition_cols, 'predict_proba', 'psth', 'null_condition')
+                        .with_columns(
+                            pl.lit(i).alias('null_iteration'),
+                            pl.lit(null_condition_pair_index).alias('null_pair_id'),
+                            pl.lit(null_condition_pair[0].meta.root_names()).alias('null_condition_1_filter'),
+                            pl.lit(null_condition_pair[1].meta.root_names()).alias('null_condition_2_filter'),
+                        )
+                    )
+                    null_dfs.append(null_unit_psths)
     unit_psths: pl.DataFrame = pl.concat(psth_dfs + null_dfs, how="diagonal_relaxed")
     (
         unit_psths
