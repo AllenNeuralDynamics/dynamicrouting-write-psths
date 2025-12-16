@@ -47,7 +47,7 @@ class Params(pydantic_settings.BaseSettings):
     min_units_across_sessions: int = pydantic.Field(500, exclude=True)
     max_workers: int | None = pydantic.Field(None, exclude=True)
     n_null_iterations: int = 100
-    skip_existing: bool = pydantic.Field(False, exclude=True)
+    skip_existing: bool = pydantic.Field(True, exclude=True)
     reverse_order: bool = pydantic.Field(False, exclude=True)
     _start_date: datetime.date = pydantic.PrivateAttr(datetime.datetime.now(zoneinfo.ZoneInfo('US/Pacific')).date())
 
