@@ -48,6 +48,12 @@ class Params(pydantic_settings.BaseSettings):
     max_workers: int | None = pydantic.Field(None, exclude=True)
     n_null_iterations: int = 100
     skip_existing: bool = pydantic.Field(False, exclude=True)
+    reverse_order: bool = pydantic.Field(False, exclude=True)
+    _start_date: datetime.date = pydantic.PrivateAttr(datetime.datetime.now(zoneinfo.ZoneInfo('US/Pacific')).date())
+
+    def model_post_init(self, __context) -> None:        
+        if self.override_date:
+            self._start_date = dateutil.parser.parse(self.override_date).date()
 
     # --------------------------------
     @property
@@ -61,11 +67,7 @@ class Params(pydantic_settings.BaseSettings):
 
     @property
     def dir_path(self) -> upath.UPath:
-        if self.override_date:
-            dt = dateutil.parser.parse(self.override_date)
-        else:
-            dt = datetime.datetime.now(zoneinfo.ZoneInfo('US/Pacific'))
-        return ROOT_DIR / f"{dt.date()}_{self.conv_kernel_s*1000:.0f}ms_{self.block_label}"
+        return ROOT_DIR / f"{self._start_date}_{self.conv_kernel_s*1000:.0f}ms_{self.block_label}"
 
     # set the priority of the input sources:
     @classmethod  
@@ -231,7 +233,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
             if params.n_null_iterations:
                 for null_condition_pair_index, null_condition_pair in enumerate(null_condition_pairs):
                     
-                    for i in params.n_null_iterations:
+                    for i in range(params.n_null_iterations):
 
                         null_unit_psths = (
                             area_spike_times
@@ -267,8 +269,14 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                             )
                         )
                         null_dfs.append(null_unit_psths)
-    unit_psths = pl.concat(psth_dfs + null_dfs, how="diagonal_relaxed")
-    unit_psths.write_parquet(parquet_path.as_posix())
+    unit_psths: pl.DataFrame = pl.concat(psth_dfs + null_dfs, how="diagonal_relaxed")
+    (
+        unit_psths
+        .with_columns(
+            pl.lit(area).alias('area'),
+        )
+        .write_parquet(parquet_path.as_posix())
+    )
     print(f"Wrote {parquet_path.as_posix()}")
 
 
@@ -369,7 +377,7 @@ if __name__ == "__main__":
         .drop_nulls('structure')
         .filter((pl.n_unique('unit_id')>=params.min_units_across_sessions).over('structure')) # checks total across all sessions
         .collect()
-        .sort(pl.len().over('structure'))
+        .sort(pl.len().over('structure'), descending=params.reverse_order)
     )
     
     with concurrent.futures.ProcessPoolExecutor(max_workers=params.max_workers or int(os.environ['CO_CPUS']), mp_context=multiprocessing.get_context('spawn')) as executor:

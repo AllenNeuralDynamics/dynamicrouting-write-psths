@@ -110,6 +110,18 @@
 			"type": "text",
 			"value_type": "integer",
 			"default_value": "100"
+		},
+		{
+			"id": "ralWUtYfV0rzH8gK",
+			"name": "reverse_order",
+			"param_name": "reverse_order",
+			"description": "Reverse processing order (default is smallest -\u003e largest areas)",
+			"help_text": "Reverse processing order (default is smallest -\u003e largest areas)",
+			"type": "text",
+			"value_type": "integer",
+			"default_value": "0",
+			"minimum": 0,
+			"maximum": 1
 		}
 	]
 }
