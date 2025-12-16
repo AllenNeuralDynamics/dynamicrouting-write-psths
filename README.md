@@ -1,5 +1,5 @@
 
-resulting dataframes (1 per area) have the following schema:
+resulting dataframes (1 per area) have the following schema (one PSTH per row):
 
 ```
 {
@@ -21,7 +21,7 @@ resulting dataframes (1 per area) have the following schema:
     'null_condition': Int32,                    # denotes which of the pair of conditions the row corresponds to: either 1 or 2 (or Null for regular PSTHs)
     'null_iteration': Int32,                    # 0-99
     'null_pair_id': Int32,                      # a unique integer for each pair of conditions (ie for each id there will be rows with null_condition==1 and null_condition==2)
-    'null_condition_1_filter': List(String),    # list of column names, eg ["is_aud_target", "is_aud_rewarded", "is_hit"]
+    'null_condition_1_filter': List(String),    # list of column names that will all be True for this PSTH, eg ["is_aud_target", "is_aud_rewarded", "is_hit"]
     'null_condition_2_filter': List(String),
     'area': String
  }
