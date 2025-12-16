@@ -240,7 +240,6 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                         )
                         .filter(
                             null_condition_pair[0] | null_condition_pair[1],
-                            pl.col('predict_proba').eq(predict_proba) if predict_proba else pl.lit(True),
                         )
                         .with_columns(
                             pl.when(null_condition_pair[0]).then(pl.lit(1)).otherwise(pl.lit(2)).alias('null_condition')
