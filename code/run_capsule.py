@@ -327,30 +327,26 @@ if __name__ == "__main__":
             )
         )
 
-    if params.bin_by_decoder_confidence:
-        cols = [f"{a}_predict_proba" for a in params.decoder_areas_to_average]
+    
+    cols = [f"{a}_predict_proba" for a in params.decoder_areas_to_average]
 
-        decoding_df = (
-            pl.read_parquet(decoding_parquet_path)
-            .with_columns(pl.mean_horizontal(cols).alias('predict_proba'))
-            .with_columns(
-                predict_proba_quintile=pl.col('predict_proba').cut([0.2, 0.4, 0.6, 0.8], include_breaks=False)
-            )
-            .select('session_id', 'trial_index', 'predict_proba', 'predict_proba_quintile')
+    decoding_df = (
+        pl.read_parquet(decoding_parquet_path)
+        .with_columns(pl.mean_horizontal(cols).alias('predict_proba'))
+        .with_columns(
+            predict_proba_quintile=pl.col('predict_proba').cut([0.2, 0.4, 0.6, 0.8], include_breaks=False)
         )
-        trials = (
-            trials
-            .join(decoding_df, on=['trial_index', 'session_id'], how='inner')
-            .with_columns(
-                is_decoder_confident=pl.col('predict_proba').sub(0.5).abs().gt(0.1),
-                is_decoder_correct = ((pl.col('predict_proba')<0.5)&(pl.col('is_aud_rewarded'))) | ((pl.col('predict_proba')>0.5)&(pl.col('is_vis_rewarded')))
-            ) 
-        )
-        
+        .select('session_id', 'trial_index', 'predict_proba', 'predict_proba_quintile')
+    )
+    trials = (
+        trials
+        .join(decoding_df, on=['trial_index', 'session_id'], how='inner')
+        .with_columns(
+            is_decoder_confident=pl.col('predict_proba').sub(0.5).abs().gt(0.1),
+            is_decoder_correct = ((pl.col('predict_proba')<0.5)&(pl.col('is_aud_rewarded'))) | ((pl.col('predict_proba')>0.5)&(pl.col('is_vis_rewarded')))
+        ) 
+    )
 
-
-    else:
-        trials = trials.with_columns(predict_proba=pl.lit(None), predict_proba_quintile=pl.lit(None))
 
     units = lazynwb.scan_nwb(nwb_files, 'units', infer_schema_length=1)
 
