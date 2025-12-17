@@ -183,26 +183,50 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                 pl.col('is_aud_target') & pl.col('is_vis_rewarded') & pl.col('is_false_alarm'), # FA aud
                 pl.col('is_aud_target') & pl.col('is_vis_rewarded') & pl.col('is_correct_reject'), # CR aud
                 pl.col('is_aud_target') & pl.col('is_vis_rewarded') & pl.col('is_false_alarm') & pl.col('is_decoder_correct') & pl.col('is_decoder_confident'), # FA aud for confident correct decoder
+                pl.col('is_aud_target') & pl.col('is_vis_rewarded') & pl.col('is_correct_reject') & pl.col('is_decoder_correct'), 
+                pl.col('is_aud_target') & pl.col('is_vis_rewarded') & pl.col('is_correct_reject') & pl.col('is_decoder_incorrect'), 
+            ),
+
+            # vis targets:
+            (
+                pl.col('is_vis_target') & pl.col('is_grating_phase_zero') & pl.col('is_vis_rewarded') & pl.col('is_hit'), # hit vis
+                pl.col('is_vis_target') & pl.col('is_grating_phase_zero') & pl.col('is_vis_rewarded') & pl.col('is_miss'), # miss vis
+                pl.col('is_vis_target') & pl.col('is_grating_phase_zero') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm'), # FA vis
+                pl.col('is_vis_target') & pl.col('is_grating_phase_zero') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject'), # CR vis
+                pl.col('is_vis_target') & pl.col('is_grating_phase_zero') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm') & pl.col('is_decoder_correct') & pl.col('is_decoder_confident'), # FA vis for confident correct decoder
+                pl.col('is_vis_target') & pl.col('is_grating_phase_zero') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject') & pl.col('is_decoder_correct'), 
+                pl.col('is_vis_target') & pl.col('is_grating_phase_zero') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject') & pl.col('is_decoder_incorrect'), 
             ),
             (
-                pl.col('is_vis_target') & pl.col('is_vis_rewarded') & pl.col('is_hit'), # hit vis
-                pl.col('is_vis_target') & pl.col('is_vis_rewarded') & pl.col('is_miss'), # miss vis
-                pl.col('is_vis_target') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm'), # FA vis
-                pl.col('is_vis_target') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject'), # CR vis
-                pl.col('is_vis_target') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm') & pl.col('is_decoder_correct') & pl.col('is_decoder_confident'), # FA vis for confident correct decoder
-
+                pl.col('is_vis_target') & pl.col('is_grating_phase_half') & pl.col('is_vis_rewarded') & pl.col('is_hit'), # hit vis
+                pl.col('is_vis_target') & pl.col('is_grating_phase_half') & pl.col('is_vis_rewarded') & pl.col('is_miss'), # miss vis
+                pl.col('is_vis_target') & pl.col('is_grating_phase_half') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm'), # FA vis
+                pl.col('is_vis_target') & pl.col('is_grating_phase_half') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject'), # CR vis
+                pl.col('is_vis_target') & pl.col('is_grating_phase_half') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm') & pl.col('is_decoder_correct') & pl.col('is_decoder_confident'), # FA vis for confident correct decoder
+                pl.col('is_vis_target') & pl.col('is_grating_phase_half') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject') & pl.col('is_decoder_correct'), 
+                pl.col('is_vis_target') & pl.col('is_grating_phase_half') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject') & pl.col('is_decoder_incorrect'), 
             ),
+
+            # aud nontargets:
             (
                 pl.col('is_aud_nontarget') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm'), # FA aud nontarget aud context
                 pl.col('is_aud_nontarget') & pl.col('is_vis_rewarded') & pl.col('is_false_alarm'), # FA aud nontarget vis context
                 pl.col('is_aud_nontarget') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject'), # CR aud nontarget aud context
                 pl.col('is_aud_nontarget') & pl.col('is_vis_rewarded') & pl.col('is_correct_reject'), # CR aud nontarget vis context
             ),
+
+            # vis nontargets:
             (
-                pl.col('is_vis_nontarget') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm'), # FA vis nontarget aud context
-                pl.col('is_vis_nontarget') & pl.col('is_vis_rewarded') & pl.col('is_false_alarm'), # FA vis nontarget vis context
-                pl.col('is_vis_nontarget') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject'), # CR vis nontarget aud context
-                pl.col('is_vis_nontarget') & pl.col('is_vis_rewarded') & pl.col('is_correct_reject'), # CR vis nontarget vis context
+                pl.col('is_vis_nontarget') & pl.col('is_grating_phase_zero') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm'), # FA vis nontarget aud context
+                pl.col('is_vis_nontarget') & pl.col('is_grating_phase_zero') & pl.col('is_vis_rewarded') & pl.col('is_false_alarm'), # FA vis nontarget vis context
+                pl.col('is_vis_nontarget') & pl.col('is_grating_phase_zero') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject'), # CR vis nontarget aud context
+                pl.col('is_vis_nontarget') & pl.col('is_grating_phase_zero') & pl.col('is_vis_rewarded') & pl.col('is_correct_reject'), # CR vis nontarget vis context
+            ),
+            (
+                pl.col('is_vis_nontarget') & pl.col('is_grating_phase_half') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm'), # FA vis nontarget aud context
+                pl.col('is_vis_nontarget') & pl.col('is_grating_phase_half') & pl.col('is_vis_rewarded') & pl.col('is_false_alarm'), # FA vis nontarget vis context
+                pl.col('is_vis_nontarget') & pl.col('is_grating_phase_half') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject'), # CR vis nontarget aud context
+                pl.col('is_vis_nontarget') & pl.col('is_grating_phase_half') & pl.col('is_vis_rewarded') & pl.col('is_correct_reject'), # CR vis nontarget vis context
             ),
         )
     
@@ -211,7 +235,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
         for cond in conds:
             condition_cols.update(cond.meta.root_names())
     condition_cols = sorted(condition_cols)
-    
+
     null_condition_pairs = []
     for condition_group in all_conditions:
         null_condition_pairs.extend(itertools.combinations(condition_group, 2))
@@ -347,8 +371,13 @@ if __name__ == "__main__":
         .join(decoding_df, on=['trial_index', 'session_id'], how='inner')
         .with_columns(
             is_decoder_confident=pl.col('predict_proba').sub(0.5).abs().gt(0.1),
-            is_decoder_correct = ((pl.col('predict_proba')<0.5)&(pl.col('is_aud_rewarded'))) | ((pl.col('predict_proba')>0.5)&(pl.col('is_vis_rewarded')))
+            is_decoder_correct = ((pl.col('predict_proba')<0.5)&(pl.col('is_aud_rewarded'))) | ((pl.col('predict_proba')>0.5)&(pl.col('is_vis_rewarded'))),
+            is_grating_phase_zero=pl.col('grating_phase').eq(0),
+            is_grating_phase_half=pl.col('grating_phase').eq(0.5),
         ) 
+        .with_columns(
+            is_decoder_incorrect=~pl.col('is_decoder_correct'),
+        )
     )
 
 
