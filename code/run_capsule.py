@@ -206,9 +206,12 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
             ),
         )
     
-
-    condition_cols = 'is_aud_target', 'is_vis_target', 'is_aud_nontarget', 'is_vis_nontarget', 'is_aud_rewarded', 'is_vis_rewarded', 'is_response', 'is_hit', 'is_miss', 'is_correct_reject', 'is_false_alarm'
-
+    condition_cols = set()
+    for conds in all_conditions:
+        for cond in conds:
+            condition_cols.update(cond.meta.root_names())
+    condition_cols = sorted(condition_cols)
+    
     null_condition_pairs = []
     for condition_group in all_conditions:
         null_condition_pairs.extend(itertools.combinations(condition_group, 2))
