@@ -338,9 +338,19 @@ if __name__ == "__main__":
             )
             .select('session_id', 'trial_index', 'predict_proba', 'predict_proba_quintile')
         )
-        trials = trials.join(decoding_df, on=['trial_index', 'session_id'], how='inner')
+        trials = (
+            trials
+            .join(decoding_df, on=['trial_index', 'session_id'], how='inner')
+            .with_columns(
+                is_decoder_confident=pl.col('predict_proba').sub(0.5).abs().gt(0.1),
+                is_decoder_correct = ((pl.col('predict_proba')<0.5)&(pl.col('is_aud_rewarded'))) | ((pl.col('predict_proba')>0.5)&(pl.col('is_vis_rewarded')))
+            ) 
+        )
+        
+
+
     else:
-        trials = trials.with_columns(predict_proba=pl.lit(None))
+        trials = trials.with_columns(predict_proba=pl.lit(None), predict_proba_quintile=pl.lit(None))
 
     units = lazynwb.scan_nwb(nwb_files, 'units', infer_schema_length=1)
 
