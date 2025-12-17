@@ -183,12 +183,15 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                 pl.col('is_aud_target') & pl.col('is_aud_rewarded') & pl.col('is_miss'), # miss aud
                 pl.col('is_aud_target') & pl.col('is_vis_rewarded') & pl.col('is_false_alarm'), # FA aud
                 pl.col('is_aud_target') & pl.col('is_vis_rewarded') & pl.col('is_correct_reject'), # CR aud
+                pl.col('is_aud_target') & pl.col('is_vis_rewarded') & pl.col('is_false_alarm') & pl.col('is_decoder_correct') & pl.col('is_decoder_confident'), # FA aud for confident correct decoder
             ),
             (
                 pl.col('is_vis_target') & pl.col('is_vis_rewarded') & pl.col('is_hit'), # hit vis
                 pl.col('is_vis_target') & pl.col('is_vis_rewarded') & pl.col('is_miss'), # miss vis
                 pl.col('is_vis_target') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm'), # FA vis
                 pl.col('is_vis_target') & pl.col('is_aud_rewarded') & pl.col('is_correct_reject'), # CR vis
+                pl.col('is_vis_target') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm') & pl.col('is_decoder_correct') & pl.col('is_decoder_confident'), # FA vis for confident correct decoder
+
             ),
             (
                 pl.col('is_aud_nontarget') & pl.col('is_aud_rewarded') & pl.col('is_false_alarm'), # FA aud nontarget aud context
@@ -326,7 +329,6 @@ if __name__ == "__main__":
                 how='semi',
             )
         )
-
     
     cols = [f"{a}_predict_proba" for a in params.decoder_areas_to_average]
 
