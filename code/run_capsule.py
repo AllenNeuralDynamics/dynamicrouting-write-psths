@@ -163,7 +163,6 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
             trials_frame=(
                 trials
                 .filter(~pl.col('is_instruction'))
-                .with_columns(session_id=pl.col('_nwb_path').str.split('/').list.get(-1).str.strip_suffix('.nwb'))
             ),
             as_counts=False,
             as_binarized_array=False,
@@ -359,18 +358,21 @@ if __name__ == "__main__":
         )
     )
     trials = (
-        lazynwb.scan_nwb(sessions_to_analyze['_nwb_path'], 'trials').collect()
-        .with_columns(pl.col('_nwb_path').str.split('/').list.get(-1).str.strip_suffix('.nwb').alias('session_id'))
+        pl.read_parquet('s3://aind-scratch-data/dynamic-routing/cache/nwb_components/v0.0.274/consolidated/trials.parquet')
     )
     if params.include_only_good_blocks:
         trials = (
             trials
             .join(
-                performance.filter(
-                    pl.col('cross_modality_dprime') >= params.good_block_dprime_threshold,
-                    pl.col('n_contingent_rewards') >= 10,
+                (
+                    performance
+                    .with_columns(pl.col('_nwb_path').str.split('/').list.get(-1).str.strip_suffix('.nwb').alias('session_id'))
+                    .filter(
+                        pl.col('cross_modality_dprime') >= params.good_block_dprime_threshold,
+                        pl.col('n_contingent_rewards') >= 10,
+                    )
                 ),
-                on=['_nwb_path', 'block_index'], 
+                on=['session_id', 'block_index'], 
                 how='semi',
             )
         )
