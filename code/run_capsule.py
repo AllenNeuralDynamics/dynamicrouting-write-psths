@@ -278,7 +278,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
     for stim_idx, conditions in enumerate(all_conditions):
         for condition in conditions:
             condition_id = condition_to_integer[condition]
-            if (path := get_parquet_path(condition_id).exists():
+            if (path := get_parquet_path(condition_id)).exists():
                 continue
             unit_psths = (
                 area_spike_times
