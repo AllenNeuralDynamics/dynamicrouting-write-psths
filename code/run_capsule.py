@@ -192,15 +192,6 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                 ['is_vis_target', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_correct'], # 
                 ['is_vis_target', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_incorrect'], # 
             ),
-            (
-                ['is_vis_target', 'is_grating_phase_half', 'is_vis_rewarded', 'is_hit'], # hit vis
-                ['is_vis_target', 'is_grating_phase_half', 'is_vis_rewarded', 'is_miss'], # miss vis
-                ['is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_false_alarm'], # FA vis
-                ['is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_correct_reject'], # CR vis
-                ['is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_false_alarm', 'is_decoder_correct', 'is_decoder_confident'], # FA vis for confident correct decoder
-                ['is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_correct'], # 
-                ['is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_incorrect'], # 
-            ),
 
             # aud nontargets:
             (
