@@ -139,7 +139,7 @@ class Params(pydantic_settings.BaseSettings):
     n_null_iterations: int = 100
     skip_existing: bool = pydantic.Field(True, exclude=True)
     largest_to_smallest: bool = pydantic.Field(False, exclude=True)
-    condition_to_integer_mapping: dict = pydantic.Field(default_factory=lambda: condition_to_integer)
+    condition_to_integer_mapping: dict[list[str] | list[list[str]], int] = pydantic.Field(default_factory=lambda: condition_to_integer)
     _start_date: datetime.date = pydantic.PrivateAttr(datetime.datetime.now(zoneinfo.ZoneInfo('US/Pacific')).date())
 
     def model_post_init(self, __context) -> None:        
