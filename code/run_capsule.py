@@ -267,7 +267,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
             .with_columns(
                 pl.lit(area).alias('area'),
             )
-            .write_parquet((parquet_dir / f"{area}_{uuid.uuid4()}".parquet).as_posix())
+            .write_parquet((parquet_dir / f"{area}_{uuid.uuid4()}.parquet").as_posix())
         )
 
     for stim_idx, conditions in enumerate(all_conditions):
