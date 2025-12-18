@@ -15,6 +15,7 @@ import functools
 import math
 import multiprocessing
 import pathlib
+import uuid
 import zoneinfo
 from typing import Iterable
 
@@ -150,29 +151,6 @@ def psth(
 
 def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: str, params: Params) -> None:
 
-    parquet_path = params.dir_path / f'{area}.parquet'
-    if params.skip_existing and parquet_path.exists():
-        print(f'Skipping {area}: parquet already on S3')
-        return None
-    
-    area_spike_times = (
-        utils.get_per_trial_spike_times(
-            starts=pl.col(params.align_to) - params.pre,
-            ends=pl.col(params.align_to) + params.post,
-            unit_ids=unit_ids,
-            trials_frame=(
-                trials
-                .filter(~pl.col('is_instruction'))
-            ),
-            as_counts=False,
-            as_binarized_array=False,
-            binarized_trial_length=1.0,
-            keep_only_necessary_cols=False
-        )
-        .drop('bin_centers', strict=False)
-        .sort('unit_id', 'trial_index')
-    )
-
     all_conditions = (
         # each group below has the same stim
         # multiple nulls are created for each group based on pairs of expressions within the group
@@ -253,12 +231,46 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
             condition_cols.update(cond)
     condition_cols = sorted(condition_cols)
 
-    null_condition_pairs = []
+    null_condition_pairs: list[list[tuple[list[str], list[str]]]] = []
     for condition_group in all_conditions:
-        null_condition_pairs.extend(itertools.combinations(condition_group, 2))
+        null_condition_pairs.append(list(itertools.combinations(condition_group, 2)))
     
-    psth_dfs = []
-    for conditions in all_conditions:
+    n_expected_dfs = sum([len(c) for c in all_conditions]) + sum([len(c) for c in null_condition_pairs])
+    parquet_dir = params.dir_path / area
+    if params.skip_existing and parquet_dir.exists() and len(parquet_dir.iterdir()) == n_expected_dfs:
+        print(f'\nSkipping {area}: parquet already on S3')
+        return None
+
+    print(f'\nProcessing {area}')
+    
+    area_spike_times = (
+        utils.get_per_trial_spike_times(
+            starts=pl.col(params.align_to) - params.pre,
+            ends=pl.col(params.align_to) + params.post,
+            unit_ids=unit_ids,
+            trials_frame=(
+                trials
+                .filter(~pl.col('is_instruction'))
+            ),
+            as_counts=False,
+            as_binarized_array=False,
+            binarized_trial_length=1.0,
+            keep_only_necessary_cols=False
+        )
+        .drop('bin_centers', strict=False)
+        .sort('unit_id', 'trial_index')
+    )
+
+    def write(df) -> None:
+        (
+            df
+            .with_columns(
+                pl.lit(area).alias('area'),
+            )
+            .write_parquet((parquet_dir / f"{area}_{uuid.uuid4()}".parquet).as_posix())
+        )
+
+    for stim_idx, conditions in enumerate(all_conditions):
         for condition in conditions:
             unit_psths = (
                 area_spike_times
@@ -274,11 +286,12 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                     pl.lit(condition).alias('condition_filter'),
                 )
             )
-            psth_dfs.append(unit_psths)
+            write(unit_psths)
 
-        null_dfs = []
         if params.n_null_iterations:
-            for null_condition_pair_index, null_condition_pair in enumerate(null_condition_pairs):
+            for null_condition_pair in null_condition_pairs[stim_idx]:
+                
+                null_dfs = []
                 
                 for i in range(params.n_null_iterations):
 
@@ -307,21 +320,14 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                                                     .select('session_id', 'unit_id', *condition_cols, 'predict_proba', 'psth', 'null_condition')
                         .with_columns(
                             pl.lit(i).alias('null_iteration'),
-                            pl.lit(null_condition_pair_index).alias('null_pair_id'),
                             pl.lit(null_condition_pair[0]).alias('null_condition_1_filter'),
                             pl.lit(null_condition_pair[1]).alias('null_condition_2_filter'),
                         )
                     )
                     null_dfs.append(null_unit_psths)
-    unit_psths: pl.DataFrame = pl.concat(psth_dfs + null_dfs, how="diagonal_relaxed")
-    (
-        unit_psths
-        .with_columns(
-            pl.lit(area).alias('area'),
-        )
-        .write_parquet(parquet_path.as_posix())
-    )
-    print(f"Wrote {parquet_path.as_posix()}")
+                write(pl.concat(null_dfs, how="diagonal_relaxed"))
+
+    print(f"Finished {area}")
 
 
 if __name__ == "__main__":
