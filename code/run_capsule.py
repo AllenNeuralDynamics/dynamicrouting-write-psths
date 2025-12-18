@@ -284,6 +284,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                     pl.lit(None).alias('null_iteration'),
                     pl.lit(None).alias('null_condition_1_filter'),
                     pl.lit(None).alias('null_condition_2_filter'),
+                    pl.lit(None).alias('null_condition_index')
                 )
             )
             write(unit_psths, path)
@@ -321,7 +322,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                         .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols, 'null_condition_index', 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size)
                                                     .select('session_id', 'unit_id', *condition_cols, 'predict_proba', 'psth', 'null_condition_index')
                         .with_columns(
-                            pl.lit(None).alias('condition_filter'),
+                            pl.lit(None).cast(pl.List(str)).alias('condition_filter'),
                             pl.lit(i).alias('null_iteration'),
                             pl.lit(null_condition_pair[0]).alias('null_condition_1_filter'),
                             pl.lit(null_condition_pair[1]).alias('null_condition_2_filter'),
