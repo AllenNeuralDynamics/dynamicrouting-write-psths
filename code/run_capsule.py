@@ -17,7 +17,7 @@ import multiprocessing
 import pathlib
 import uuid
 import zoneinfo
-from typing import Iterable
+from typing import Any, Iterable
 
 import lazynwb
 import polars as pl
@@ -235,12 +235,6 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
     for condition_group in all_conditions:
         null_condition_pairs.append(list(itertools.combinations(condition_group, 2)))
     
-    n_expected_dfs = sum([len(c) for c in all_conditions]) + sum([len(c) for c in null_condition_pairs])
-    parquet_dir = params.dir_path / area
-    if params.skip_existing and parquet_dir.exists() and len(parquet_dir.iterdir()) == n_expected_dfs:
-        print(f'\nSkipping {area}: parquet already on S3')
-        return None
-
     print(f'\nProcessing {area}')
     
     area_spike_times = (
@@ -261,22 +255,25 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
         .sort('unit_id', 'trial_index')
     )
 
-    def write(df) -> None:
+    def write(df, path: upath.UPath) -> None:
         (
             df
             .with_columns(
                 pl.lit(area).alias('area'),
             )
-            .write_parquet((parquet_dir / f"{area}_{uuid.uuid4()}.parquet").as_posix())
+            .write_parquet(path.as_posix())
         )
+
+    def get_parquet_path(to_hash: Any) -> upath.UPath:
+        return params.dir_path / area / f"{area}_{hash(str(to_hash))}.parquet"
 
     for stim_idx, conditions in enumerate(all_conditions):
         for condition in conditions:
+            if (path := get_parquet_path(condition)).exists():
+                continue
             unit_psths = (
                 area_spike_times
-                .filter(
-                    *condition, 
-                )
+                .filter(*condition)
                 .with_columns(
                     pl.lit(1).alias('duration'), # needed for psth
                 )
@@ -289,15 +286,17 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                     pl.lit(None).alias('null_condition_2_filter'),
                 )
             )
-            write(unit_psths)
+            write(unit_psths, path)
 
         if params.n_null_iterations:
             for null_condition_pair in null_condition_pairs[stim_idx]:
                 
+                if (path := get_parquet_path(null_condition_pair)).exists():
+                    continue
+
                 null_dfs = []
                 
                 for i in range(params.n_null_iterations):
-
                     null_unit_psths = (
                         area_spike_times
                         .with_columns(
@@ -329,7 +328,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                         )
                     )
                     null_dfs.append(null_unit_psths)
-                write(pl.concat(null_dfs, how="diagonal_relaxed"))
+                write(pl.concat(null_dfs, how="diagonal_relaxed"), path)
 
     print(f"Finished {area}")
 
