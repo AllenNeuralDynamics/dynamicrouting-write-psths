@@ -1,17 +1,19 @@
 
-import itertools
 import os
 os.environ['POLARS_MAX_THREADS'] = '1'
 os.environ['TOKIO_WORKER_THREADS'] = '1' 
 os.environ['OPENBLAS_NUM_THREADS'] = '1' 
 os.environ['OMP_THREAD_LIMIT'] = '1' 
 os.environ['RAYON_NUM_THREADS'] = '1'
+
+import concurrent.futures
 import contextlib
 import datetime
 import dateutil
-import json
-import concurrent.futures
 import functools
+import hashlib
+import itertools
+import json
 import math
 import multiprocessing
 import pathlib
@@ -256,7 +258,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
         )
 
     def get_parquet_path(to_hash: Any) -> upath.UPath:
-        return params.dir_path / area / f"{area}_{hash(str(to_hash))}.parquet"
+        return params.dir_path / area / f"{area}_{hashlib.md5(str(to_hash)).hexdigest()}.parquet"
 
     for stim_idx, conditions in enumerate(all_conditions):
         for condition in conditions:
@@ -272,10 +274,10 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                 .select('session_id', 'unit_id', *condition_cols, 'psth', 'predict_proba')
                 .with_columns(
                     pl.lit(condition).alias('condition_filter'),
-                    pl.lit(None).alias('null_iteration'),
-                    pl.lit(None).alias('null_condition_1_filter'),
-                    pl.lit(None).alias('null_condition_2_filter'),
-                    pl.lit(None).alias('null_condition_index')
+                    pl.lit(None).cast(pl.Int32).alias('null_iteration'),
+                    pl.lit(None).cast(pl.List(pl.Utf8)).alias('null_condition_1_filter'),
+                    pl.lit(None).cast(pl.List(pl.Utf8)).alias('null_condition_2_filter'),
+                    pl.lit(None).cast(pl.Int32).alias('null_condition_index')
                 )
             )
             write(unit_psths, path)
@@ -313,7 +315,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                         .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols, 'null_condition_index', 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size)
                                                     .select('session_id', 'unit_id', *condition_cols, 'predict_proba', 'psth', 'null_condition_index')
                         .with_columns(
-                            pl.lit(None).cast(pl.List(str)).alias('condition_filter'),
+                            pl.lit(None).cast(pl.List(pl.Utf8)).alias('condition_filter'),
                             pl.lit(i).alias('null_iteration'),
                             pl.lit(null_condition_pair[0]).alias('null_condition_1_filter'),
                             pl.lit(null_condition_pair[1]).alias('null_condition_2_filter'),
