@@ -34,6 +34,94 @@ import utils
 
 ROOT_DIR = upath.UPath('s3://aind-scratch-data/dynamic-routing/psths')
 decoding_parquet_path = '/root/capsule/data/all_trials_with_predict_proba.parquet'
+all_conditions = (
+        # each group below has the same stim
+        # multiple nulls are created for each group based on pairs of expressions within the group
+            (
+                ('is_aud_target', 'is_aud_rewarded', 'is_hit'), # hit aud
+                ('is_aud_target', 'is_aud_rewarded', 'is_miss'), # miss aud
+                ('is_aud_target', 'is_vis_rewarded', 'is_false_alarm'), # FA aud
+                ('is_aud_target', 'is_vis_rewarded', 'is_correct_reject'), # CR aud
+                ('is_aud_target', 'is_vis_rewarded', 'is_false_alarm', 'is_decoder_correct', 'is_decoder_confident'), # FA aud for confident correct decoder
+                ('is_aud_target', 'is_vis_rewarded', 'is_correct_reject', 'is_decoder_correct'), #
+                ('is_aud_target', 'is_vis_rewarded', 'is_correct_reject', 'is_decoder_incorrect'), #
+            ),
+
+            # vis targets:
+            (
+                ('is_vis_target', 'is_vis_rewarded', 'is_hit'), # hit vis
+                ('is_vis_target', 'is_vis_rewarded', 'is_miss'), # miss vis
+                ('is_vis_target', 'is_aud_rewarded', 'is_false_alarm'), # FA vis
+                ('is_vis_target', 'is_aud_rewarded', 'is_correct_reject'), # CR vis
+                ('is_vis_target', 'is_aud_rewarded', 'is_false_alarm', 'is_decoder_correct', 'is_decoder_confident'), # FA vis for confident correct decoder
+                ('is_vis_target', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_correct'), # 
+                ('is_vis_target', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_incorrect'), # 
+            ),
+            (
+                ('is_vis_target', 'is_grating_phase_half', 'is_vis_rewarded', 'is_hit'), # hit vis
+                ('is_vis_target', 'is_grating_phase_half', 'is_vis_rewarded', 'is_miss'), # miss vis
+                ('is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_false_alarm'), # FA vis
+                ('is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_correct_reject'), # CR vis
+                ('is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_false_alarm', 'is_decoder_correct', 'is_decoder_confident'), # FA vis for confident correct decoder
+                ('is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_correct'), # 
+                ('is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_incorrect'), # 
+            ),
+            (
+                ('is_vis_target', 'is_grating_phase_zero', 'is_vis_rewarded', 'is_hit'), # hit vis
+                ('is_vis_target', 'is_grating_phase_zero', 'is_vis_rewarded', 'is_miss'), # miss vis
+                ('is_vis_target', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_false_alarm'), # FA vis
+                ('is_vis_target', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_correct_reject'), # CR vis
+                ('is_vis_target', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_false_alarm', 'is_decoder_correct', 'is_decoder_confident'), # FA vis for confident correct decoder
+                ('is_vis_target', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_correct'), # 
+                ('is_vis_target', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_incorrect'), # 
+            ),
+
+            # aud nontargets:
+            (
+                ('is_aud_nontarget', 'is_aud_rewarded', 'is_false_alarm'), # FA aud nontarget aud context
+                ('is_aud_nontarget', 'is_vis_rewarded', 'is_false_alarm'), # FA aud nontarget vis context
+                ('is_aud_nontarget', 'is_aud_rewarded', 'is_correct_reject'), # CR aud nontarget aud context
+                ('is_aud_nontarget', 'is_vis_rewarded', 'is_correct_reject'), # CR aud nontarget vis context
+            ),
+
+            # vis nontargets:
+            (
+                ('is_vis_nontarget', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_false_alarm'), # FA vis nontarget aud context
+                ('is_vis_nontarget', 'is_grating_phase_zero', 'is_vis_rewarded', 'is_false_alarm'), # FA vis nontarget vis context
+                ('is_vis_nontarget', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_correct_reject'), # CR vis nontarget aud context
+                ('is_vis_nontarget', 'is_grating_phase_zero', 'is_vis_rewarded', 'is_correct_reject'), # CR vis nontarget vis context
+            ),
+            (
+                ('is_vis_nontarget', 'is_grating_phase_half', 'is_aud_rewarded', 'is_false_alarm'), # FA vis nontarget aud context
+                ('is_vis_nontarget', 'is_grating_phase_half', 'is_vis_rewarded', 'is_false_alarm'), # FA vis nontarget vis context
+                ('is_vis_nontarget', 'is_grating_phase_half', 'is_aud_rewarded', 'is_correct_reject'), # CR vis nontarget aud context
+                ('is_vis_nontarget', 'is_grating_phase_half', 'is_vis_rewarded', 'is_correct_reject'), # CR vis nontarget vis context
+            ),
+        )
+    
+condition_cols = set()
+for conds in all_conditions:
+    for cond in conds:
+        condition_cols.update(cond)
+condition_cols = sorted(condition_cols)
+
+null_condition_pairs: list[list[tuple[list[str], list[str]]]] = []
+for condition_group in all_conditions:
+    null_condition_pairs.append(list(itertools.combinations(condition_group, 2)))
+
+#Create mapping of null_condition_pairs to integers for easy storage and lookup
+condition_to_integer = {}
+condition_count = 0
+for conds in all_conditions:
+    for cond in conds:
+        condition_to_integer[cond] = condition_count
+        condition_count += 1
+
+for null_pairs in null_condition_pairs:
+    for pair in null_pairs:
+        condition_to_integer[pair] = condition_count
+        condition_count += 1
+
 
 class Params(pydantic_settings.BaseSettings):
     override_date: str | None = pydantic.Field(None, exclude=True)
@@ -51,6 +139,7 @@ class Params(pydantic_settings.BaseSettings):
     n_null_iterations: int = 100
     skip_existing: bool = pydantic.Field(True, exclude=True)
     largest_to_smallest: bool = pydantic.Field(False, exclude=True)
+    condition_to_integer_mapping: dict = pydantic.Field(default_factory=lambda: condition_to_integer)
     _start_date: datetime.date = pydantic.PrivateAttr(datetime.datetime.now(zoneinfo.ZoneInfo('US/Pacific')).date())
 
     def model_post_init(self, __context) -> None:        
@@ -153,81 +242,7 @@ def psth(
 
 def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: str, params: Params) -> None:
 
-    all_conditions = (
-        # each group below has the same stim
-        # multiple nulls are created for each group based on pairs of expressions within the group
-            (
-                ['is_aud_target', 'is_aud_rewarded', 'is_hit'], # hit aud
-                ['is_aud_target', 'is_aud_rewarded', 'is_miss'], # miss aud
-                ['is_aud_target', 'is_vis_rewarded', 'is_false_alarm'], # FA aud
-                ['is_aud_target', 'is_vis_rewarded', 'is_correct_reject'], # CR aud
-                ['is_aud_target', 'is_vis_rewarded', 'is_false_alarm', 'is_decoder_correct', 'is_decoder_confident'], # FA aud for confident correct decoder
-                ['is_aud_target', 'is_vis_rewarded', 'is_correct_reject', 'is_decoder_correct'], #
-                ['is_aud_target', 'is_vis_rewarded', 'is_correct_reject', 'is_decoder_incorrect'], #
-            ),
 
-            # vis targets:
-            (
-                ['is_vis_target', 'is_vis_rewarded', 'is_hit'], # hit vis
-                ['is_vis_target', 'is_vis_rewarded', 'is_miss'], # miss vis
-                ['is_vis_target', 'is_aud_rewarded', 'is_false_alarm'], # FA vis
-                ['is_vis_target', 'is_aud_rewarded', 'is_correct_reject'], # CR vis
-                ['is_vis_target', 'is_aud_rewarded', 'is_false_alarm', 'is_decoder_correct', 'is_decoder_confident'], # FA vis for confident correct decoder
-                ['is_vis_target', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_correct'], # 
-                ['is_vis_target', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_incorrect'], # 
-            ),
-            (
-                ['is_vis_target', 'is_grating_phase_half', 'is_vis_rewarded', 'is_hit'], # hit vis
-                ['is_vis_target', 'is_grating_phase_half', 'is_vis_rewarded', 'is_miss'], # miss vis
-                ['is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_false_alarm'], # FA vis
-                ['is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_correct_reject'], # CR vis
-                ['is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_false_alarm', 'is_decoder_correct', 'is_decoder_confident'], # FA vis for confident correct decoder
-                ['is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_correct'], # 
-                ['is_vis_target', 'is_grating_phase_half', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_incorrect'], # 
-            ),
-            (
-                ['is_vis_target', 'is_grating_phase_zero', 'is_vis_rewarded', 'is_hit'], # hit vis
-                ['is_vis_target', 'is_grating_phase_zero', 'is_vis_rewarded', 'is_miss'], # miss vis
-                ['is_vis_target', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_false_alarm'], # FA vis
-                ['is_vis_target', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_correct_reject'], # CR vis
-                ['is_vis_target', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_false_alarm', 'is_decoder_correct', 'is_decoder_confident'], # FA vis for confident correct decoder
-                ['is_vis_target', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_correct'], # 
-                ['is_vis_target', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_correct_reject', 'is_decoder_incorrect'], # 
-            ),
-
-            # aud nontargets:
-            (
-                ['is_aud_nontarget', 'is_aud_rewarded', 'is_false_alarm'], # FA aud nontarget aud context
-                ['is_aud_nontarget', 'is_vis_rewarded', 'is_false_alarm'], # FA aud nontarget vis context
-                ['is_aud_nontarget', 'is_aud_rewarded', 'is_correct_reject'], # CR aud nontarget aud context
-                ['is_aud_nontarget', 'is_vis_rewarded', 'is_correct_reject'], # CR aud nontarget vis context
-            ),
-
-            # vis nontargets:
-            (
-                ['is_vis_nontarget', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_false_alarm'], # FA vis nontarget aud context
-                ['is_vis_nontarget', 'is_grating_phase_zero', 'is_vis_rewarded', 'is_false_alarm'], # FA vis nontarget vis context
-                ['is_vis_nontarget', 'is_grating_phase_zero', 'is_aud_rewarded', 'is_correct_reject'], # CR vis nontarget aud context
-                ['is_vis_nontarget', 'is_grating_phase_zero', 'is_vis_rewarded', 'is_correct_reject'], # CR vis nontarget vis context
-            ),
-            (
-                ['is_vis_nontarget', 'is_grating_phase_half', 'is_aud_rewarded', 'is_false_alarm'], # FA vis nontarget aud context
-                ['is_vis_nontarget', 'is_grating_phase_half', 'is_vis_rewarded', 'is_false_alarm'], # FA vis nontarget vis context
-                ['is_vis_nontarget', 'is_grating_phase_half', 'is_aud_rewarded', 'is_correct_reject'], # CR vis nontarget aud context
-                ['is_vis_nontarget', 'is_grating_phase_half', 'is_vis_rewarded', 'is_correct_reject'], # CR vis nontarget vis context
-            ),
-        )
-    
-    condition_cols = set()
-    for conds in all_conditions:
-        for cond in conds:
-            condition_cols.update(cond)
-    condition_cols = sorted(condition_cols)
-
-    null_condition_pairs: list[list[tuple[list[str], list[str]]]] = []
-    for condition_group in all_conditions:
-        null_condition_pairs.append(list(itertools.combinations(condition_group, 2)))
-    
     print(f'\nProcessing {area}')
     
     area_spike_times = (
@@ -257,12 +272,13 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
             .write_parquet(path.as_posix())
         )
 
-    def get_parquet_path(to_hash: Any) -> upath.UPath:
-        return params.dir_path / area / f"{area}_{hashlib.md5(str(to_hash)).hexdigest()}.parquet"
+    def get_parquet_path(condition_id: Any) -> upath.UPath:
+        return params.dir_path / area / f"{area}_{condition_id}.parquet"
 
     for stim_idx, conditions in enumerate(all_conditions):
         for condition in conditions:
-            if (path := get_parquet_path(condition)).exists():
+            condition_id = condition_to_integer[condition]
+            if (path := get_parquet_path(condition_id).exists():
                 continue
             unit_psths = (
                 area_spike_times
@@ -273,10 +289,9 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                 .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols, 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size,)
                 .select('session_id', 'unit_id', *condition_cols, 'psth', 'predict_proba')
                 .with_columns(
-                    pl.lit(condition).alias('condition_filter'),
+                    pl.lit(condition_id).alias('condition_id'),
                     pl.lit(None).cast(pl.Int32).alias('null_iteration'),
-                    pl.lit(None).cast(pl.List(pl.Utf8)).alias('null_condition_1_filter'),
-                    pl.lit(None).cast(pl.List(pl.Utf8)).alias('null_condition_2_filter'),
+                    pl.lit(None).cast(pl.Int32).alias('null_condition_pair_id'),
                     pl.lit(None).cast(pl.Int32).alias('null_condition_index')
                 )
             )
@@ -284,8 +299,8 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
 
         if params.n_null_iterations:
             for null_condition_pair in null_condition_pairs[stim_idx]:
-                
-                if (path := get_parquet_path(null_condition_pair)).exists():
+                null_condition_pair_id = condition_to_integer[null_condition_pair]
+                if (path := get_parquet_path(null_condition_pair_id)).exists():
                     continue
 
                 null_dfs = []
@@ -315,11 +330,9 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                         .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols, 'null_condition_index', 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size)
                                                     .select('session_id', 'unit_id', *condition_cols, 'predict_proba', 'psth', 'null_condition_index')
                         .with_columns(
-                            pl.lit(None).cast(pl.List(pl.Utf8)).alias('condition_filter'),
+                            pl.lit(None).cast(pl.Int32).alias('condition_id'),
                             pl.lit(i).alias('null_iteration'),
-                            pl.lit(null_condition_pair[0]).alias('null_condition_1_filter'),
-                            pl.lit(null_condition_pair[1]).alias('null_condition_2_filter'),
-                        )
+                            pl.lit(null_condition_pair_id).alias('null_condition_pair_id'),                        )
                     )
                     null_dfs.append(null_unit_psths)
                 write(pl.concat(null_dfs, how="diagonal_relaxed"), path)
