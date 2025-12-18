@@ -37,7 +37,7 @@ class Params(pydantic_settings.BaseSettings):
     override_date: str | None = pydantic.Field(None, exclude=True)
     conv_kernel_s: float = 0.01
     align_to: str = 'stim_start_time'
-    decoder_areas_to_average: list[str] = pydantic.Field(default_factory=lambda: sorted(['MRN', 'SCm', 'MOs', 'FRP' , 'CP', 'SSp']))
+    decoder_areas_to_average: list[str] = pydantic.Field(default_factory=lambda: sorted(['ACAd', 'AId', 'AIp', 'FRP', 'ILA', 'MOs', 'MOp', 'ORBl', 'ORBvl', 'PL', 'SSp', 'SSs', 'MRN', 'SCm', 'CP']))
     bin_size: float = 0.001
     pre: float = 0.5
     post: float = 0.5
