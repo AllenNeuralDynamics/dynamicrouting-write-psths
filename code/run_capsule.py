@@ -48,7 +48,7 @@ class Params(pydantic_settings.BaseSettings):
     max_workers: int | None = pydantic.Field(None, exclude=True)
     n_null_iterations: int = 100
     skip_existing: bool = pydantic.Field(True, exclude=True)
-    reverse_order: bool = pydantic.Field(False, exclude=True)
+    largest_to_smallest: bool = pydantic.Field(False, exclude=True)
     _start_date: datetime.date = pydantic.PrivateAttr(datetime.datetime.now(zoneinfo.ZoneInfo('US/Pacific')).date())
 
     def model_post_init(self, __context) -> None:        
@@ -284,6 +284,9 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                 .select('session_id', 'unit_id', *condition_cols, 'psth', 'predict_proba')
                 .with_columns(
                     pl.lit(condition).alias('condition_filter'),
+                    pl.lit(None).alias('null_iteration'),
+                    pl.lit(None).alias('null_condition_1_filter'),
+                    pl.lit(None).alias('null_condition_2_filter'),
                 )
             )
             write(unit_psths)
@@ -301,24 +304,25 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                             pl.lit(1).alias('duration'),
                         )
                         .with_columns(
-                            pl.when(*null_condition_pair[0]).then(pl.lit(1)).when(*null_condition_pair[1]).then(pl.lit(2)).alias('null_condition')
+                            pl.when(*null_condition_pair[0]).then(pl.lit(1)).when(*null_condition_pair[1]).then(pl.lit(2)).alias('null_condition_index')
                         )
-                        .drop_nulls('null_condition')
+                        .drop_nulls('null_condition_index')
                         .filter(
-                            pl.col('null_condition').n_unique().eq(2).over('session_id')
+                            pl.col('null_condition_index').n_unique().eq(2).over('session_id')
                         )
                         #shuffle context labels within session groups
                         .group_by('session_id', 'unit_id', *condition_cols)
                         .agg(pl.all())
                         .with_columns(
-                            pl.col('null_condition').list.sample(fraction=1, shuffle=True, with_replacement=False, seed=i),
+                            pl.col('null_condition_index').list.sample(fraction=1, shuffle=True, with_replacement=False, seed=i),
                         )
                         .explode(pl.all().exclude('session_id', 'unit_id', *condition_cols))
                         
                         #make psths
-                        .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols, 'null_condition', 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size)
-                                                    .select('session_id', 'unit_id', *condition_cols, 'predict_proba', 'psth', 'null_condition')
+                        .pipe(psth, response_col='n_spikes', duration_col='duration', group_by=['session_id', 'unit_id', *condition_cols, 'null_condition_index', 'predict_proba'], conv_kernel=params.conv_kernel_s, bin_size=params.bin_size)
+                                                    .select('session_id', 'unit_id', *condition_cols, 'predict_proba', 'psth', 'null_condition_index')
                         .with_columns(
+                            pl.lit(None).alias('condition_filter'),
                             pl.lit(i).alias('null_iteration'),
                             pl.lit(null_condition_pair[0]).alias('null_condition_1_filter'),
                             pl.lit(null_condition_pair[1]).alias('null_condition_2_filter'),
@@ -440,7 +444,7 @@ if __name__ == "__main__":
         .drop_nulls('structure')
         .filter((pl.n_unique('unit_id')>=params.min_units_across_sessions).over('structure')) # checks total across all sessions
         .collect()
-        .sort(pl.len().over('structure'), descending=params.reverse_order)
+        .sort(pl.len().over('structure'), descending=params.largest_to_smallest)
     )
     
     with concurrent.futures.ProcessPoolExecutor(max_workers=params.max_workers or int(os.environ['CO_CPUS']), mp_context=multiprocessing.get_context('spawn')) as executor:

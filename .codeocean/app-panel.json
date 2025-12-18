@@ -113,8 +113,8 @@
 		},
 		{
 			"id": "ralWUtYfV0rzH8gK",
-			"name": "reverse_order",
-			"param_name": "reverse_order",
+			"name": "largest_to_smallest",
+			"param_name": "largest_to_smallest",
 			"description": "Reverse processing order (default is smallest -\u003e largest areas)",
 			"help_text": "Reverse processing order (default is smallest -\u003e largest areas)",
 			"type": "text",
