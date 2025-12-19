@@ -122,6 +122,7 @@ for null_pairs in null_condition_pairs:
         condition_to_integer[pair] = condition_count
         condition_count += 1
 
+integer_to_condition = {v:k for k,v in condition_to_integer.items()}
 
 class Params(pydantic_settings.BaseSettings):
     override_date: str | None = pydantic.Field(None, exclude=True)
@@ -139,7 +140,7 @@ class Params(pydantic_settings.BaseSettings):
     n_null_iterations: int = 100
     skip_existing: bool = pydantic.Field(True, exclude=True)
     largest_to_smallest: bool = pydantic.Field(False, exclude=True)
-    condition_to_integer_mapping: dict[list[str] | list[list[str]], int] = pydantic.Field(default_factory=lambda: condition_to_integer)
+    integer_id_to_condition_mapping: dict[int, tuple[str,...] | tuple[tuple[str,...], tuple[str,...]]] = pydantic.Field(default_factory=lambda: integer_to_condition)
     _start_date: datetime.date = pydantic.PrivateAttr(datetime.datetime.now(zoneinfo.ZoneInfo('US/Pacific')).date())
 
     def model_post_init(self, __context) -> None:        
@@ -348,7 +349,7 @@ if __name__ == "__main__":
     s3_json_path = params.dir_path.parent / f'{params.dir_path.name}.json'
     if s3_json_path.exists():
         existing_params = json.loads(s3_json_path.read_text())
-        if existing_params != params.model_dump():
+        if existing_params != params.model_dump(mode='json'):
             raise ValueError(f"Params file already exists and does not match current params:\n{existing_params=}\n{params.model_dump()=}.\nDelete the data dir and params.json on S3 if you want to update parameters (or encode time in dir path)")
     else:   
         s3_json_path.write_text(params.model_dump_json(indent=4))
