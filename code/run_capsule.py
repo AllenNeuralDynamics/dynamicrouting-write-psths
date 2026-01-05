@@ -120,9 +120,8 @@ def write_psths_for_area(trials: pl.DataFrame, area_label: str, params: Params, 
     print(f"Writing {parquet_path}")
     (
         area_spike_times
-        # .sort(
-        #     'is_'
-        # )
+        # TODO: sort by trials cols (instruction, stim, context etc)
+        # to speed up access
         .with_columns(
             pl.lit(area_label).alias('area'),
         )
