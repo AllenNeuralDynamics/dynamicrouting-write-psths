@@ -241,7 +241,7 @@ def psth(
     return updated_df
 
 
-def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area_label: str, params: Params) -> None:
+def write_psths_for_area(trials: pl.DataFrame, area_label: str, params: Params, unit_ids: Iterable[str] | None = None) -> None:
 
 
     print(f'\nProcessing {area_label}')
