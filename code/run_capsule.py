@@ -241,10 +241,10 @@ def psth(
     return updated_df
 
 
-def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: str, params: Params) -> None:
+def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area_label: str, params: Params) -> None:
 
 
-    print(f'\nProcessing {area}')
+    print(f'\nProcessing {area_label}')
     
     area_spike_times = (
         utils.get_per_trial_spike_times(
@@ -268,13 +268,13 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
         (
             df
             .with_columns(
-                pl.lit(area).alias('area'),
+                pl.lit(area_label).alias('area'),
             )
             .write_parquet(path.as_posix())
         )
 
     def get_parquet_path(condition_id: Any) -> upath.UPath:
-        return params.dir_path / area / f"{area}_{condition_id}.parquet"
+        return params.dir_path / area_label / f"{area_label}_{condition_id}.parquet"
 
     for stim_idx, conditions in enumerate(all_conditions):
         for condition in conditions:
@@ -338,7 +338,7 @@ def write_psths_for_area(unit_ids: Iterable[str], trials: pl.DataFrame, area: st
                     null_dfs.append(null_unit_psths)
                 write(pl.concat(null_dfs, how="diagonal_relaxed"), path)
 
-    print(f"Finished {area}")
+    print(f"Finished {area_label}")
 
 
 if __name__ == "__main__":
