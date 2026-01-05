@@ -257,7 +257,7 @@ def write_psths_for_area(trials: pl.DataFrame, area_label: str, params: Params, 
             ),
             as_counts=False,
             as_binarized_array=False,
-            binarized_trial_length=1.0,
+            bin_size_ms=0.001,
             keep_only_necessary_cols=False
         )
         .drop('bin_centers', strict=False)

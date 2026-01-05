@@ -322,7 +322,7 @@ def get_per_trial_spike_times(
     apply_obs_intervals: bool = True,
     as_counts: bool = False,
     as_binarized_array: bool = False,
-    binarized_trial_length: int | None = None,
+    bin_size_ms: float | None = None,
     keep_only_necessary_cols: bool = True,
 ) -> pl.DataFrame:
     """"""
@@ -357,9 +357,8 @@ def get_per_trial_spike_times(
         assert isinstance(trials_frame, pl.DataFrame), 'expected trials_frame to be a pl.DataFrame or LazyFrame'
         trials_df = trials_frame
 
-    if as_binarized_array:
-        assert isinstance(binarized_trial_length, float), 'if tensor,  must be float (length of trial in seconds)'
-        binarized_trial_length_in_ms = int(binarized_trial_length / 0.001)  # convert to number of 1ms bins
+    if as_binarized_array and not bin_size_ms:
+        raise ValueError(f"Must specify bin_size_ms when as_binarized_array is True. Got: {bin_size_ms=!r}")
 
     trials_df = (
         trials_df
@@ -409,9 +408,9 @@ def get_per_trial_spike_times(
                         bin_size = 0.001
                         this_interval_start = session_trials[f"{temp_col_prefix}_{col_name}"][interval_index][0]
                         this_interval_end = session_trials[f"{temp_col_prefix}_{col_name}"][interval_index][1]
-                        spike_vector = np.zeros(binarized_trial_length_in_ms, dtype=bool)
-                        relative_interval_spike_times = np.floor((spike_times_in_interval - this_interval_start) / bin_size).astype(int)
-                        relative_interval_spike_times = relative_interval_spike_times[relative_interval_spike_times<binarized_trial_length_in_ms]
+                        spike_vector = np.zeros(bin_size_ms, dtype=bool)
+                        relative_interval_spike_times = np.floor((spike_times_in_interval - this_interval_start) / bin_size_ms).astype(int)
+                        relative_interval_spike_times = relative_interval_spike_times[relative_interval_spike_times<bin_size_ms]
                         np.add.at(spike_vector, relative_interval_spike_times, 1)
                         spikes_in_intervals.append(spike_vector)
 
