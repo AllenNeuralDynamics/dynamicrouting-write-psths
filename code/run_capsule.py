@@ -130,8 +130,13 @@ def write_psths_for_area(trials: pl.DataFrame, area_label: str, params: Params, 
     print(f"Writing {parquet_path}")
     (
         area_spike_times
-        # TODO: sort by trials cols (instruction, stim, context etc)
-        # to speed up access
+        # sort to speed up read access:
+        .sort(
+            'unit_id',
+            'stim_name',
+            'rewarded_modality',
+            'trial_index',
+        )
         .with_columns(
             pl.lit(area_label).alias('area'),
         )
@@ -176,6 +181,12 @@ if __name__ == "__main__":
         'SCop': 'SCs',
         'SCsg': 'SCs',
         'SCzo': 'SCs',
+        'ECT1': 'ECT',
+        'ECT2/3': 'ECT',    
+        'ECT6b': 'ECT',
+        'ECT5': 'ECT',
+        'ECT6a': 'ECT', 
+        'ECT4': 'ECT',
     }
     
     units = (

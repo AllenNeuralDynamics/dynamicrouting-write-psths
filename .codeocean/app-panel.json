@@ -22,6 +22,16 @@
 			"default_value": "6"
 		},
 		{
+			"id": "8pCUUu8MLV34v7yt",
+			"name": "skip_existing",
+			"param_name": "skip_existing",
+			"type": "text",
+			"value_type": "integer",
+			"default_value": "1",
+			"minimum": 0,
+			"maximum": 1
+		},
+		{
 			"id": "7any1TAR5nwy12pj",
 			"name": "intervals_table",
 			"param_name": "intervals_table",
