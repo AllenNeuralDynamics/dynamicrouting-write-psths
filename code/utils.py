@@ -420,14 +420,24 @@ def get_per_trial_spike_times(
                     else:
                         spikes_in_intervals.append((spike_times_in_interval-session_trials[f"{temp_col_prefix}_{col_name}"][interval_index][0]).tolist())
                 results[col_name].extend(spikes_in_intervals)
-                
+    
+    if as_counts:
+        dtype = pl.Int32
+    elif as_binarized_array:
+        dtype = pl.Array(pl.Int32, shape=len(spike_vector))
+    else:
+        dtype = pl.List(pl.Float64)
+    schema_overrides = {
+        col_name: dtype
+        for col_name in col_names
+    }
     if apply_obs_intervals or not keep_only_necessary_cols:
         results_df = (
             trials_df
             .drop(pl.selectors.starts_with(temp_col_prefix))
             .join(
                 other=(
-                    pl.DataFrame(results)
+                    pl.DataFrame(results, schema_overrides=schema_overrides)
                     .with_columns(
                         pl.col('unit_id').str.split('_').list.slice(0, 2).list.join('_').alias('session_id'),
                     )
@@ -437,7 +447,7 @@ def get_per_trial_spike_times(
             )
         )
     else:
-        results_df = pl.DataFrame(results)
+        results_df = pl.DataFrame(results, schema_overrides=schema_overrides)
     
     if apply_obs_intervals:
         results_df = (

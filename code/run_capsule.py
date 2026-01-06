@@ -1,5 +1,6 @@
 
 import os
+os.environ['RUST_BACKTRACE'] = '1'
 os.environ['POLARS_MAX_THREADS'] = '1'
 os.environ['TOKIO_WORKER_THREADS'] = '1' 
 os.environ['OPENBLAS_NUM_THREADS'] = '1' 
@@ -43,7 +44,7 @@ class Params(pydantic_settings.BaseSettings):
     pre: float = 0.5
     post: float = 0.5
     default_qc_only: bool = True
-    as_spike_counts: bool = False
+    as_spike_count: bool = False
     as_binarized_array: bool = True
     bin_size_s: float = 0.001
     max_workers: int | None = pydantic.Field(None, exclude=True)
@@ -74,6 +75,11 @@ class Params(pydantic_settings.BaseSettings):
     @pydantic.computed_field
     @property
     def spike_col(self) -> str:
+        if self.as_spike_count:
+            return 'spike_count'
+        if self.as_binarized_array:
+            return 'binarized_spike_times'
+        return 'spike_times'
 
     # set the priority of the input sources:
     @classmethod  
@@ -108,8 +114,8 @@ def write_psths_for_area(trials: pl.DataFrame, area_label: str, params: Params, 
             ends=pl.col(params.align_to_col) + params.post,
             unit_ids=unit_ids,
             trials_frame=trials,
-            col_names=['binarized_spike_times'],
-            as_counts=params.as_spike_counts,
+            col_names=params.spike_col,
+            as_counts=params.as_spike_count,
             as_binarized_array=params.as_binarized_array,
             bin_size_s=params.bin_size_s,
             binarized_trial_length=params.pre + params.post,
@@ -129,7 +135,6 @@ def write_psths_for_area(trials: pl.DataFrame, area_label: str, params: Params, 
         .with_columns(
             pl.lit(area_label).alias('area'),
         )
-        .cast({'binarized_spike_times': pl.Array(pl.Int32, shape=array_len)})
         .write_parquet(
             file=parquet_path.as_posix(), 
             row_group_size=100,     # reduce row groups due to size of arrays 
@@ -141,7 +146,7 @@ def write_psths_for_area(trials: pl.DataFrame, area_label: str, params: Params, 
 if __name__ == "__main__":
 
     params = Params()
-    print(params.model_dump_json(indent=4))
+    print(params)
 
     pathlib.Path('/root/capsule/results/params.json').write_text(params.model_dump_json(indent=4))
     s3_json_path = params.dir_path.parent / f'{params.dir_path.name}.json'
