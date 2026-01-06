@@ -73,8 +73,8 @@
 		},
 		{
 			"id": "olwZn4tfNPIR3r",
-			"name": "as_spike_counts",
-			"param_name": "as_spike_counts",
+			"name": "as_spike_count",
+			"param_name": "as_spike_count",
 			"description": "save number of spikes in [pre:post] window",
 			"help_text": "save number of spikes in [pre:post] window",
 			"type": "text",
@@ -91,14 +91,14 @@
 			"help_text": "save presence/absence of spikes in bins, rather than spike times",
 			"type": "text",
 			"value_type": "integer",
-			"default_value": "0",
+			"default_value": "1",
 			"minimum": 0,
 			"maximum": 1
 		},
 		{
 			"id": "LtYODpeQgvOHLQ",
-			"name": "bins_size_s",
-			"param_name": "bins_size_s",
+			"name": "bin_size_s",
+			"param_name": "bin_size_s",
 			"description": "bin size for binarized_array (has no effect if as_binarized_array == False)",
 			"help_text": "bin size for binarized_array (has no effect if as_binarized_array == False)",
 			"type": "text",
