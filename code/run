@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -ex
 
+# export _RJEM_MALLOC_CONF="muzzy_decay_ms:0"
+
 # --------------------------------------------------------------------------------
 # This is the master script for the capsule. When you click "Reproducible Run", the code in this file will execute.
 python -u run_capsule.py "$@"
