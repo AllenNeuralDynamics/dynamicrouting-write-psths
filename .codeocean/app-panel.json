@@ -23,27 +23,29 @@
 		},
 		{
 			"id": "7any1TAR5nwy12pj",
-			"name": "min_units_across_sessions",
-			"param_name": "min_units_across_sessions",
-			"description": "minimum number of units per area across all sessions to be included - can be modified without creating a new data folder on S3",
-			"help_text": "minimum number of units per area across all sessions to be included - can be modified without creating a new data folder on S3",
+			"name": "intervals_table",
+			"param_name": "intervals_table",
+			"description": "eg trials or /intervals/optotagging_trials",
+			"help_text": "eg trials or /intervals/optotagging_trials",
 			"type": "text",
-			"value_type": "integer",
-			"default_value": "0"
+			"value_type": "string",
+			"default_value": "trials"
 		},
 		{
 			"id": "2zPL91cGcSTRfH",
-			"name": "conv_kernel_s",
-			"param_name": "conv_kernel_s",
-			"description": "length of conv PSTH kernel, in seconds",
+			"name": "default_qc_only",
+			"param_name": "default_qc_only",
+			"description": "only use units with default_qc == True",
 			"type": "text",
-			"value_type": "string",
-			"default_value": "0.01"
+			"value_type": "integer",
+			"default_value": "1",
+			"minimum": 0,
+			"maximum": 1
 		},
 		{
 			"id": "gRSgqAsyqXsP70",
-			"name": "align_to",
-			"param_name": "align_to",
+			"name": "align_to_col",
+			"param_name": "align_to_col",
 			"description": "column in trials table to align PSTHs to (pre and post will determine total window)  ",
 			"type": "text",
 			"value_type": "string",
@@ -71,32 +73,10 @@
 		},
 		{
 			"id": "olwZn4tfNPIR3r",
-			"name": "include_only_good_blocks",
-			"param_name": "include_only_good_blocks",
-			"description": "discard individual blocks with dprime less than criteria in `good_block_dprime_threshold`",
-			"help_text": "discard individual blocks with dprime less than criteria in `good_block_dprime_threshold`",
-			"type": "text",
-			"value_type": "integer",
-			"default_value": "1",
-			"minimum": 0,
-			"maximum": 1
-		},
-		{
-			"id": "LtYODpeQgvOHLQ",
-			"name": "good_block_dprime_threshold",
-			"param_name": "good_block_dprime_threshold",
-			"description": "cross modal dprime threshold applied to determine good blocks (has no effect if `include_only_good_blocks` is false)",
-			"help_text": "cross modal dprime threshold applied to determine good blocks (has no effect if `include_only_good_blocks` is false)",
-			"type": "text",
-			"value_type": "number",
-			"default_value": "1.0"
-		},
-		{
-			"id": "tZn92uq0JTZSAQ",
-			"name": "include_good_blocks_in_bad_sessions",
-			"param_name": "include_good_blocks_in_bad_sessions",
-			"description": "include single blocks that meet criteria, in sessions that fail overall (has no effect if `include_only_good_blocks` is false)",
-			"help_text": "include single blocks that meet criteria, in sessions that fail overall (has no effect if `include_only_good_blocks` is false)",
+			"name": "as_spike_counts",
+			"param_name": "as_spike_counts",
+			"description": "save number of spikes in [pre:post] window",
+			"help_text": "save number of spikes in [pre:post] window",
 			"type": "text",
 			"value_type": "integer",
 			"default_value": "0",
@@ -104,12 +84,26 @@
 			"maximum": 1
 		},
 		{
-			"id": "D3pnDSAd6p1h2lXB",
-			"name": "n_null_iterations",
-			"param_name": "n_null_iterations",
+			"id": "tZn92uq0JTZSAQ",
+			"name": "as_binarized_array",
+			"param_name": "as_binarized_array",
+			"description": "save presence/absence of spikes in bins, rather than spike times",
+			"help_text": "save presence/absence of spikes in bins, rather than spike times",
 			"type": "text",
 			"value_type": "integer",
-			"default_value": "100"
+			"default_value": "0",
+			"minimum": 0,
+			"maximum": 1
+		},
+		{
+			"id": "LtYODpeQgvOHLQ",
+			"name": "bins_size_s",
+			"param_name": "bins_size_s",
+			"description": "bin size for binarized_array (has no effect if as_binarized_array == False)",
+			"help_text": "bin size for binarized_array (has no effect if as_binarized_array == False)",
+			"type": "text",
+			"value_type": "number",
+			"default_value": "0.001"
 		},
 		{
 			"id": "ralWUtYfV0rzH8gK",

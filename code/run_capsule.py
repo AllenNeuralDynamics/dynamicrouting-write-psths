@@ -70,6 +70,10 @@ class Params(pydantic_settings.BaseSettings):
         ver = utils.get_datacube_dir().name.split('_')[-1]
         assert ver.startswith('v'), f"Unexpected datacube version format: {ver}"
         return ver
+        
+    @pydantic.computed_field
+    @property
+    def spike_col(self) -> str:
 
     # set the priority of the input sources:
     @classmethod  
