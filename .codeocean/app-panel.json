@@ -4,10 +4,10 @@
 	"parameters": [
 		{
 			"id": "KUnvcsulVqAlJ1rC",
-			"name": "override_date",
-			"param_name": "override_date",
-			"description": "today's date is encoded in data folder: add to a previous folder by specifying it here (yyyy-mm-dd)",
-			"help_text": "today's date is encoded in data folder: add to a previous folder by specifying it here (yyyy-mm-dd)",
+			"name": "output_dir_name",
+			"param_name": "output_dir_name",
+			"description": "specify a new or existing folder name to append to. defaults to today's date (yyyy-mm-dd)",
+			"help_text": "specify a new or existing folder name to append to. defaults to today's date (yyyy-mm-dd)",
 			"type": "text",
 			"value_type": "string"
 		},

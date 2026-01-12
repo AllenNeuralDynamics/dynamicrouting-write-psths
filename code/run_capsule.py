@@ -38,7 +38,8 @@ decoding_parquet_path = '/root/capsule/data/all_trials_with_predict_proba.parque
 
 
 class Params(pydantic_settings.BaseSettings):
-    override_date: str | None = pydantic.Field(None, exclude=True)
+    # don't use a default factory here, in case Params are instantiated in a new process
+    output_dir_name: str = pydantic.Field(default=datetime.datetime.now(zoneinfo.ZoneInfo('US/Pacific')).date(), exclude=True, description="specify a new or existing folder name to append to. defaults to today's date (yyyy-mm-dd)")
     intervals_table: str = 'trials'
     align_to_col: str = 'stim_start_time'
     pre: float = 0.5
@@ -50,17 +51,13 @@ class Params(pydantic_settings.BaseSettings):
     max_workers: int | None = pydantic.Field(None, exclude=True)
     skip_existing: bool = pydantic.Field(True, exclude=True)
     largest_to_smallest: bool = pydantic.Field(False, exclude=True)
-    _start_date: datetime.date = pydantic.PrivateAttr(datetime.datetime.now(zoneinfo.ZoneInfo('US/Pacific')).date())
 
-    def model_post_init(self, __context) -> None:        
-        if self.override_date:
-            self._start_date = dateutil.parser.parse(self.override_date).date()
 
     # --------------------------------
    
     @property
     def dir_path(self) -> upath.UPath:
-        return ROOT_DIR / f"{self._start_date}"
+        return ROOT_DIR / self.output_dir_name
 
     @pydantic.computed_field
     @property
