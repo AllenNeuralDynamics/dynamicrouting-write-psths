@@ -385,6 +385,7 @@ def get_per_trial_spike_times(
     results = {
         'unit_id': [], 
         # session_id can be derived from unit_id
+        # 'session_id': [],
         'trial_index': [],
     }
     for col_name in col_names:
@@ -398,6 +399,8 @@ def get_per_trial_spike_times(
             if row['unit_id'] is None:
                 raise ValueError(f"Missing unit_id in {row=}")
             results['unit_id'].extend([row['unit_id']] * len(session_trials))
+
+            # results['session_id'].extend([session_id] * len(session_trials))
 
             for (start, end, col_name) in zip(starts, ends, col_names):
                 # get spike times with start:end interval for each row of the trials table
@@ -424,7 +427,7 @@ def get_per_trial_spike_times(
     if as_counts:
         dtype = pl.Int32
     elif as_binarized_array:
-        dtype = pl.Array(pl.Int32, shape=len(spike_vector))
+        dtype = pl.List(pl.Boolean)
     else:
         dtype = pl.List(pl.Float64)
     schema_overrides = {
